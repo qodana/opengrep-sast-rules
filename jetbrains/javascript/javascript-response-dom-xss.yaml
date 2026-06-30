@@ -1,0 +1,53 @@
+rules:
+- id: benchmark-response-dom-xss
+  message: Response data reaches a dangerous DOM HTML sink.
+  languages:
+  - javascript
+  - typescript
+  severity: ERROR
+  mode: taint
+  pattern-sources:
+  - pattern-either:
+    - pattern: fetch(...)
+    - pattern: this.#http.get(...)
+    - pattern: this.#http.get<Response>(...)
+    - pattern: $HTTP.get(...)
+    - pattern: useFragment(...)
+    - pattern: useLazyLoadQuery(...)
+    - pattern: usePreloadedQuery(...)
+    - pattern: useClientQuery(...)
+    - pattern: readFragment(...)
+  - patterns:
+    - pattern-either:
+      - pattern: axios.interceptors.response.use(($RESPONSE) => { ... }, ...)
+      - pattern: axios.interceptors.response.use(function ($RESPONSE) { ... }, ...)
+    - focus-metavariable: $RESPONSE
+  pattern-sinks:
+  - patterns:
+    - pattern-either:
+      - pattern: $EL.innerHTML = $VALUE
+      - pattern: |
+          <div
+            ...
+            dangerouslySetInnerHTML={{
+              __html: $VALUE,
+            }}
+            ...
+          />
+    - focus-metavariable: $VALUE
+  pattern-propagators:
+  - pattern: $TO = await $FROM.json()
+    from: $FROM
+    to: $TO
+  - pattern: $TO = $FROM.json()
+    from: $FROM
+    to: $TO
+  - pattern: $TO = $FROM.data
+    from: $FROM
+    to: $TO
+  - pattern: $TO = $FROM.$PROP
+    from: $FROM
+    to: $TO
+  - pattern: $TO = $FROM[$IDX]
+    from: $FROM
+    to: $TO

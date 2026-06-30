@@ -1,0 +1,23 @@
+rules:
+  - id: csharp-codeql-xpath-injection
+    languages: [ csharp ]
+    severity: ERROR
+    message: Tainted data reaches an XPath expression
+    mode: taint
+
+    pattern-sources:
+      - pattern-either:
+          - pattern: $CTX.Request.QueryString[$KEY]
+          - pattern: $COMMAND.ExecuteReader()
+
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: XPathExpression.Compile($QUERY)
+              - pattern: $XML.SelectNodes($QUERY)
+              - pattern: $NAV.Select($QUERY)
+              - pattern: $NAV.SelectSingleNode($QUERY)
+              - pattern: $NAV.Compile($QUERY)
+              - pattern: $NAV.Evaluate($QUERY)
+              - pattern: $NAV.Matches($QUERY)
+          - focus-metavariable: $QUERY

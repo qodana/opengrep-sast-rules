@@ -1,0 +1,14 @@
+rules:
+  - id: csharp-codeql-stored-xss
+    languages: [ csharp ]
+    severity: ERROR
+    message: Stored data reaches an HTML response
+    mode: taint
+
+    pattern-sources:
+      - pattern: $COMMAND.ExecuteReader()
+
+    pattern-sinks:
+      - patterns:
+          - pattern: $RESPONSE.Write($VALUE)
+          - focus-metavariable: $VALUE

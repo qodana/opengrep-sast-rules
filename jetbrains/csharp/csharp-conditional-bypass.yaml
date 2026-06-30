@@ -1,0 +1,25 @@
+rules:
+  - id: csharp-codeql-conditional-bypass
+    languages: [ csharp ]
+    severity: ERROR
+    message: User-controlled condition guards a sensitive action
+    mode: taint
+
+    pattern-sources:
+      - pattern-either:
+          - pattern: $CTX.Request.QueryString[$KEY]
+          - pattern: $CTX.Request.Cookies[$KEY]
+          - pattern: Dns.GetHostByAddress(...)
+
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $VALUE == "false"
+              - pattern: if ($VALUE == "false") $ACTION;
+              - pattern: if ($VALUE == "false") { ... }
+              - pattern: if ($VALUE.Equals("false")) ...
+              - pattern: $VALUE == "trustme.com"
+              - pattern: if ($VALUE == "trustme.com") $ACTION;
+              - pattern: if ($VALUE == "trustme.com") { ... }
+              - pattern: if ($VALUE.EndsWith("trustme.com")) ...
+          - focus-metavariable: $VALUE

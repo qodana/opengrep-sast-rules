@@ -1,0 +1,50 @@
+rules:
+  - id: client-side-request-forgery
+    message: User-controlled URL reaches an outgoing request sink.
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR
+    mode: taint
+
+    pattern-sources:
+      - pattern-either:
+          - pattern: window.location.search
+          - pattern: window.location.hash
+          - pattern: window.name
+          - pattern: document.URL
+          - pattern: document.documentURI
+
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: fetch($URL, ...)
+              - pattern: nodeFetch($URL, ...)
+              - pattern: request($URL, ...)
+              - pattern: request.get($URL, ...)
+              - pattern: requestPromise($URL, ...)
+              - pattern: new WebSocket($URL, ...)
+              - pattern: new ws($URL, ...)
+              - patterns:
+                  - pattern-either:
+                      - pattern: $HTTP.get($URL, ...)
+                      - pattern: $HTTP.request($URL, ...)
+                  - metavariable-regex:
+                      metavariable: $HTTP
+                      regex: '^(http|https)$'
+              - pattern: |
+                  import { get } from 'https';
+                  ...
+                  get($URL, ...)
+              - pattern: |
+                  import { get } from 'http';
+                  ...
+                  get($URL, ...)
+              - pattern: |
+                  import got from 'got';
+                  ...
+                  got($URL, ...)
+          - metavariable-regex:
+              metavariable: $URL
+              regex: '^[^?]*(\+|$)'
+          - focus-metavariable: $URL

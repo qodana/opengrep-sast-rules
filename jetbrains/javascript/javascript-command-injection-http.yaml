@@ -1,0 +1,394 @@
+rules:
+- id: command-injection-from-http-request
+  message: >-
+    Detected user input from HTTP request flowing into a command execution function.
+    This could lead to a command injection vulnerability where an attacker could execute
+    arbitrary commands on the system. Avoid passing user input directly to command execution
+    functions. If necessary, use allowlists for commands and proper input validation.
+  metadata:
+    cwe:
+    - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
+    owasp:
+    - A01:2017 - Injection
+    - A03:2021 - Injection
+    category: security
+    technology:
+    - javascript
+    - nodejs
+    references:
+    - https://owasp.org/www-community/attacks/Command_Injection
+    - https://cheatsheetseries.owasp.org/cheatsheets/Nodejs_Security_Cheat_Sheet.html
+    cwe2022-top25: true
+    cwe2021-top25: true
+    subcategory:
+    - vuln
+    likelihood: HIGH
+    impact: HIGH
+    confidence: MEDIUM
+  languages:
+  - javascript
+  - typescript
+  severity: ERROR
+  mode: taint
+  pattern-sources:
+  - patterns:
+    - pattern-either:
+      - pattern: res
+      - pattern: req
+      # HTTP request query parameters
+      - pattern: $REQ.query
+      - pattern: $REQ.query.$PARAM
+      # URL parsing
+      - pattern: url.parse($REQ.url, ...).query
+      - pattern: url.parse($REQ.url, ...).query.$PARAM
+      # Request body
+      - pattern: $REQ.body
+      - pattern: $REQ.body.$PARAM
+      # Request params (route parameters)
+      - pattern: $REQ.params
+      - pattern: $REQ.params.$PARAM
+      # Koa context
+      - pattern: $CTX.params
+      - pattern: $CTX.params.$PARAM
+      - pattern: $CTX.query
+      - pattern: $CTX.query.$PARAM
+      - pattern: $CTX.request.query
+      - pattern: $CTX.request.body
+      # Request headers
+      - pattern: $REQ.headers
+      - pattern: $REQ.headers.$HEADER
+      # File upload sources (multer, busboy, formidable, multiparty)
+      - pattern: $REQ.file
+      - pattern: $REQ.file.$PROP
+      - pattern: $REQ.files
+      - pattern: $REQ.files.$PROP
+      - pattern: $REQ.files[$IDX]
+      - pattern: $REQ.files[$IDX].$PROP
+  # Busboy file callback - filename parameter
+  - patterns:
+    - pattern-either:
+      - pattern: |
+          $BUSBOY.on('file', function ($F1, $F2, $FILENAME, ...) {
+            ...
+          })
+      - pattern: |
+          $BUSBOY.on('file', ($F1, $F2, $FILENAME, ...) => {
+            ...
+          })
+    - focus-metavariable: $FILENAME
+  # Formidable/Multiparty parse callback - fields parameter
+  - patterns:
+    - pattern-either:
+      - pattern: |
+          $FORM.parse(..., function ($ERR, $FIELDS, ...) {
+            ...
+          })
+      - pattern: |
+          $FORM.parse(..., ($ERR, $FIELDS, ...) => {
+            ...
+          })
+    - focus-metavariable: $FIELDS
+  # Multiparty part event - part parameter
+  - patterns:
+    - pattern-either:
+      - pattern: |
+          $FORM.on('part', function ($PART) {
+            ...
+          })
+      - pattern: |
+          $FORM.on('part', ($PART) => {
+            ...
+          })
+    - focus-metavariable: $PART
+  pattern-sinks:
+  # Promisified child_process function calls - any variable calling exec/spawn/execFile methods
+  - patterns:
+    - pattern-either:
+      - patterns:
+        - pattern: $VAR.exec($CMD)
+        - focus-metavariable: $CMD
+      - patterns:
+        - pattern: $VAR.exec($CMD, ...)
+        - focus-metavariable: $CMD
+      - patterns:
+        - pattern: $VAR.execSync($CMD)
+        - focus-metavariable: $CMD
+      - patterns:
+        - pattern: $VAR.execSync($CMD, ...)
+        - focus-metavariable: $CMD
+      - patterns:
+        - pattern: $VAR.spawn($CMD, ...)
+        - focus-metavariable: $CMD
+      - patterns:
+        - pattern: $VAR.spawnSync($CMD, ...)
+        - focus-metavariable: $CMD
+      - patterns:
+        - pattern: $VAR.execFile($CMD, ...)
+        - focus-metavariable: $CMD
+      - patterns:
+        - pattern: $VAR.execFileSync($CMD, ...)
+        - focus-metavariable: $CMD
+  # Direct promisified function calls - function assigned from promisify/similar
+  - patterns:
+    - pattern: $FUNC($CMD)
+    - focus-metavariable: $CMD
+    - pattern-inside: |
+        $FUNC = $PROMISIFY(...)
+        ...
+    - pattern-not-inside: $FUNC = ...
+    - pattern-not-inside: |
+        $FUNC = require(...)
+        ...
+    - pattern-not-inside: |
+        const { ..., $FUNC, ... } = require(...)
+        ...
+    - pattern-not: promisify(...)
+    - pattern-not: promisifyAll(...)
+    - pattern-not: es6Promisify(...)
+    - pattern-not: thenifyAll(...)
+    - pattern-not: thenifyAll.withCallback(...)
+    - pattern-not: garPromisify(...)
+    - pattern-not: utilPromisify(...)
+    - pattern-not: directPromisify(...)
+    - pattern-not: maybe(...)
+    # Exclude promisifying non-child_process functions
+    - pattern-not-inside: |
+        function $USERFUNC(...) { ... }
+        ...
+        $FUNC = $PROMISIFY($USERFUNC)
+        ...
+    - pattern-not-inside: |
+        const $USERFUNC = (...) => ...
+        ...
+        $FUNC = $PROMISIFY($USERFUNC)
+        ...
+    - pattern-not-inside: |
+        $FUNC = $PROMISIFY((...) => ...)
+        ...
+    - pattern-not-inside: |
+        $FUNC = $PROMISIFY(function(...) { ... })
+        ...
+  - patterns:
+    - pattern: $FUNC($CMD, ...)
+    - focus-metavariable: $CMD
+    - pattern-inside: |
+        $FUNC = $PROMISIFY(...)
+        ...
+    - pattern-not-inside: $FUNC = ...
+    - pattern-not-inside: |
+        $FUNC = require(...)
+        ...
+    - pattern-not-inside: |
+        const { ..., $FUNC, ... } = require(...)
+        ...
+    - pattern-not: promisify(...)
+    - pattern-not: promisifyAll(...)
+    - pattern-not: es6Promisify(...)
+    - pattern-not: thenifyAll(...)
+    - pattern-not: thenifyAll.withCallback(...)
+    - pattern-not: garPromisify(...)
+    - pattern-not: utilPromisify(...)
+    - pattern-not: directPromisify(...)
+    - pattern-not: maybe(...)
+    # Exclude promisifying non-child_process functions
+    - pattern-not-inside: |
+        function $USERFUNC(...) { ... }
+        ...
+        $FUNC = $PROMISIFY($USERFUNC)
+        ...
+    - pattern-not-inside: |
+        const $USERFUNC = (...) => ...
+        ...
+        $FUNC = $PROMISIFY($USERFUNC)
+        ...
+    - pattern-not-inside: |
+        $FUNC = $PROMISIFY((...) => ...)
+        ...
+    - pattern-not-inside: |
+        $FUNC = $PROMISIFY(function(...) { ... })
+        ...
+  - patterns:
+    - pattern-either:
+      # child_process.exec and variants - only first argument (no options object)
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.exec($CMD)
+          - pattern: $CP.execSync($CMD)
+          - pattern: exec($CMD)
+          - pattern: execSync($CMD)
+        - focus-metavariable: $CMD
+      # child_process.spawn and spawnSync - command argument
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.spawn($CMD, ...)
+          - pattern: $CP.spawnSync($CMD, ...)
+          - pattern: spawn($CMD, ...)
+          - pattern: spawnSync($CMD, ...)
+        - focus-metavariable: $CMD
+      # child_process.spawn and spawnSync - args argument
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.spawn($CMD, $ARGS)
+          - pattern: $CP.spawn($CMD, $ARGS, $OPTS)
+          - pattern: $CP.spawnSync($CMD, $ARGS)
+          - pattern: $CP.spawnSync($CMD, $ARGS, $OPTS)
+          - pattern: spawn($CMD, $ARGS)
+          - pattern: spawn($CMD, $ARGS, $OPTS)
+          - pattern: spawnSync($CMD, $ARGS)
+          - pattern: spawnSync($CMD, $ARGS, $OPTS)
+        - focus-metavariable: $ARGS
+      # child_process.execFile and execFileSync - command argument
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.execFile($CMD, ...)
+          - pattern: $CP.execFileSync($CMD, ...)
+          - pattern: execFile($CMD, ...)
+          - pattern: execFileSync($CMD, ...)
+        - focus-metavariable: $CMD
+      # child_process.execFile and execFileSync - args argument
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.execFile($FILE, $ARGS)
+          - pattern: $CP.execFile($FILE, $ARGS, $OPTS, ...)
+          - pattern: $CP.execFileSync($FILE, $ARGS)
+          - pattern: $CP.execFileSync($FILE, $ARGS, $OPTS)
+          - pattern: execFile($FILE, $ARGS)
+          - pattern: execFile($FILE, $ARGS, $OPTS, ...)
+          - pattern: execFileSync($FILE, $ARGS)
+          - pattern: execFileSync($FILE, $ARGS, $OPTS)
+        - focus-metavariable: $ARGS
+      # child_process.fork
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.fork($CMD, ...)
+          - pattern: fork($CMD, ...)
+        - focus-metavariable: $CMD
+      # spawn with shell arguments
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.spawn($SH, [$FLAG, $CMD, ...], ...)
+          - pattern: spawn($SH, [$FLAG, $CMD, ...], ...)
+        - metavariable-regex:
+            metavariable: $FLAG
+            regex: ^["\'](-c|/c|/C)["\']$
+        - focus-metavariable: $CMD
+      # execFile with shell and dangerous args
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.execFile($SH, [..., $CMD, ...], ...)
+          - pattern: execFile($SH, [..., $CMD, ...], ...)
+        - focus-metavariable: $CMD
+    - pattern-either:
+      - pattern-inside: |
+          $CP = require('child_process')
+          ...
+      - pattern-inside: |
+          import $CP from 'child_process'
+          ...
+      - pattern-inside: |
+          import * as $CP from 'child_process'
+          ...
+      - pattern-inside: |
+          import { ..., exec, ... } from 'child_process'
+          ...
+      - pattern-inside: |
+          import { ..., execSync, ... } from 'child_process'
+          ...
+      - pattern-inside: |
+          import { ..., spawn, ... } from 'child_process'
+          ...
+      - pattern-inside: |
+          import { ..., spawnSync, ... } from 'child_process'
+          ...
+      - pattern-inside: |
+          import { ..., execFile, ... } from 'child_process'
+          ...
+      - pattern-inside: |
+          import { ..., execFileSync, ... } from 'child_process'
+          ...
+      - pattern-inside: |
+          import { ..., fork, ... } from 'child_process'
+          ...
+      - pattern-inside: |
+          $EXEC = require('child_process').exec
+          ...
+      - pattern-inside: |
+          $EXEC = require('child_process').execSync
+          ...
+      - pattern-inside: |
+          $SPAWN = require('child_process').spawn
+          ...
+      - pattern-inside: |
+          $SPAWN = require('child_process').spawnSync
+          ...
+      - pattern-inside: |
+          $EXECFILE = require('child_process').execFile
+          ...
+      - pattern-inside: |
+          $EXECFILE = require('child_process').execFileSync
+          ...
+      - pattern-inside: |
+          $FORK = require('child_process').fork
+          ...
+      - pattern-inside: |
+          const { ..., exec, ... } = require('child_process')
+          ...
+      - pattern-inside: |
+          const { ..., execSync, ... } = require('child_process')
+          ...
+      - pattern-inside: |
+          const { ..., spawn, ... } = require('child_process')
+          ...
+      - pattern-inside: |
+          const { ..., spawnSync, ... } = require('child_process')
+          ...
+      - pattern-inside: |
+          const { ..., execFile, ... } = require('child_process')
+          ...
+      - pattern-inside: |
+          const { ..., execFileSync, ... } = require('child_process')
+          ...
+      - pattern-inside: |
+          const { ..., fork, ... } = require('child_process')
+          ...
+  pattern-sanitizers:
+  - patterns:
+    - pattern-either:
+      # Functions with validation/safe in the name
+      - pattern: isValidName(...)
+      - pattern: isSafeName(...)
+      - pattern: isValid(...)
+      - pattern: isSafe(...)
+      # Number conversions
+      - pattern: parseInt(...)
+      - pattern: parseFloat(...)
+      - pattern: Number(...)
+      # Type checks that ensure it's a number
+      - patterns:
+        - pattern: $X
+        - pattern-inside: |
+            if (typeof $X === "number") {
+              ...
+            }
+      - patterns:
+        - pattern: $X
+        - pattern-inside: |
+            if (!isNaN($X)) {
+              ...
+            }
+      - patterns:
+        - pattern: $X
+        - pattern-inside: |
+            if (!isNaN(parseInt($X))) {
+              ...
+            }
+      - patterns:
+        - pattern: $X
+        - pattern-inside: |
+            if (!isNaN(parseFloat($X))) {
+              ...
+            }
+  pattern-propagators:
+    - pattern: ($PRG).parse($ARGS, ...)
+      from: $ARGS
+      to: $PRG

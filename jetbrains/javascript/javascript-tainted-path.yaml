@@ -1,0 +1,279 @@
+rules:
+  - id: benchmark-javascript-tainted-path
+    message: User-controlled data reaches a filesystem path sink.
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR
+    mode: taint
+
+    pattern-sources:
+      - pattern-either:
+          - pattern: $REQ.url
+          - pattern: $REQ.query.$KEY
+          - pattern: $REQ.query[$KEY]
+          - pattern: $REQ.params[$KEY]
+          - pattern: $REQ.params.$KEY
+          - pattern: $REQ.params
+          - pattern: $REQ.body
+          - pattern: $REQ.param(...)
+          - pattern: $REQUEST.params.$KEY
+          - pattern: $REQUEST.params[$KEY]
+          - pattern: parseTorrent(...).name
+
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $FS.readFileSync($PATH, ...)
+              - pattern: $FS.readFile($PATH, ...)
+              - pattern: $FS.createReadStream($PATH, ...)
+              - pattern: $FS.writeFile($PATH, ...)
+              - pattern: $FS.writeFileSync($PATH, ...)
+              - pattern: $FS.rm($PATH, ...)
+              - pattern: $FS.rmSync($PATH, ...)
+              - pattern: $FS.cp($PATH, ...)
+              - pattern: $FS.cp(..., $PATH, ...)
+              - pattern: $FS.cpSync($PATH, ...)
+              - pattern: $FS.cpSync(..., $PATH, ...)
+              - pattern: $FS.copyFileSync($PATH, ...)
+              - pattern: $FS.copyFileSync(..., $PATH, ...)
+              - pattern: $FS.opendir($PATH, ...)
+              - pattern: $FS.opendirSync($PATH, ...)
+              - pattern: $FS.openAsBlob($PATH, ...)
+              - pattern: $FS.statfs($PATH, ...)
+              - pattern: $FS.statfsSync($PATH, ...)
+              - pattern: $FS.lutimes($PATH, ...)
+              - pattern: $FS.lutimesSync($PATH, ...)
+              - pattern: $FS.outputJSONSync($PATH, ...)
+              - pattern: $FS.realpathSync($PATH, ...)
+              - pattern: $FS.realpath($PATH, ...)
+              - pattern: $FS.open($PATH, ...)
+              - pattern: $FS.openSync($PATH, ...)
+              - pattern: $FS.stat($PATH, ...)
+              - pattern: $FS.statSync($PATH, ...)
+              - pattern: $FS.lstat($PATH, ...)
+              - pattern: $FS.lstatSync($PATH, ...)
+              - pattern: $FS.readdir($PATH, ...)
+              - pattern: $FS.readdirSync($PATH, ...)
+              - pattern: $FS.mkdir($PATH, ...)
+              - pattern: $FS.mkdirSync($PATH, ...)
+              - pattern: $FS.rmdir($PATH, ...)
+              - pattern: $FS.rmdirSync($PATH, ...)
+              - pattern: $FS.unlink($PATH, ...)
+              - pattern: $FS.unlinkSync($PATH, ...)
+              - pattern: $FS.rename($PATH, ...)
+              - pattern: $FS.renameSync($PATH, ...)
+              - pattern: $RES.render($PATH, ...)
+              - pattern: $RES.sendFile($PATH, ...)
+              - pattern: $RES.sendfile($PATH, ...)
+              - pattern: $RES.download($PATH, ...)
+              - pattern: require($PATH)
+              - pattern: resolve.sync($PATH, ...)
+              - pattern: resolve($PATH, ...)
+              - pattern: $FILE.mv($PATH, ...)
+              - pattern: '$CP.execa($CMD, { inputFile: $PATH })'
+              - pattern: '$CP.execa($CMD, $ARGS, { inputFile: $PATH })'
+              - pattern: '$PROC.pipeStdout($PATH)'
+              - pattern: '$PROC.pipeAll($PATH)'
+              - pattern: '$PAGE.pdf({ path: $PATH, ... })'
+              - pattern: '$PAGE.screenshot({ path: $PATH, ... })'
+              - pattern: '$PRETTIER.resolveConfig($PATH, ...)'
+              - pattern: '$PRETTIER.resolveConfig($FILE, { config: $PATH, ... })'
+              - pattern: require('send')($REQ, $PATH, ...)
+              - pattern: require("send")($REQ, $PATH, ...)
+              - pattern: '$CP.execSync($CMD, {cwd: $PATH})'
+              - pattern: '$CP.execFileSync($CMD, $ARGS, {cwd: $PATH})'
+              - pattern: '$CP.execFileSync($CMD, {cwd: $PATH})'
+              - pattern: '$({ inputFile: $PATH })`...`'
+              - pattern: '$({ inputFile: $PATH })'
+              - pattern: '$WRAPPER($FS.readFileSync)($PATH, ...)'
+              - pattern: '$PKG.readPackageSync({cwd: $PATH, ...})'
+              - pattern: '$PKG.readPackageAsync({cwd: $PATH, ...})'
+              - pattern: mkdirp($PATH, ...)
+              - pattern: $LIB.mkdirp($PATH, ...)
+              - pattern: $LIB.mkdirpSync($PATH, ...)
+              - pattern: $LIB.sync($PATH, ...)
+              - pattern: $LIB.native($PATH, ...)
+              - pattern: $LIB.nativeSync($PATH, ...)
+              - pattern: $LIB.manual($PATH, ...)
+              - pattern: $LIB.manualSync($PATH, ...)
+              - pattern: $LIB.windows($PATH, ...)
+              - pattern: $LIB.windowsSync($PATH, ...)
+              - pattern: $LIB.moveRemove($PATH, ...)
+              - pattern: $LIB.moveRemoveSync($PATH, ...)
+              - pattern: $LIB.posix($PATH, ...)
+              - pattern: $LIB.posixSync($PATH, ...)
+              - pattern: $LIB.$GROUP.sync($PATH, ...)
+              - pattern: $LIB.mkdirpNative($PATH, ...)
+              - pattern: $LIB.mkdirpNativeSync($PATH, ...)
+              - pattern: $LIB.mkdirpManual($PATH, ...)
+              - pattern: $LIB.mkdirpManualSync($PATH, ...)
+              - pattern: $LIB.rimrafSync($PATH, ...)
+              - pattern: makeDirectory($PATH, ...)
+              - pattern: makeDirectorySync($PATH, ...)
+              - pattern: open($PATH, ...)
+              - pattern: openApp($PATH, ...)
+              - pattern: chownr($PATH, ...)
+              - pattern: $LIB.mkdirs($PATH, ...)
+              - pattern: $LIB.mkdirsSync($PATH, ...)
+              - pattern: $LIB.ensureDir($PATH, ...)
+              - pattern: $LIB.ensureDirSync($PATH, ...)
+              - pattern: $LIB.ensureFile($PATH, ...)
+              - pattern: $LIB.ensureFileSync($PATH, ...)
+              - pattern: $LIB.remove($PATH, ...)
+              - pattern: $LIB.removeSync($PATH, ...)
+              - pattern: $LIB.emptyDir($PATH, ...)
+              - pattern: $LIB.emptyDirSync($PATH, ...)
+              - pattern: $LIB.emptydir($PATH, ...)
+              - pattern: $LIB.emptydirSync($PATH, ...)
+              - pattern: $LIB.copy($PATH, ...)
+              - pattern: $LIB.copySync($PATH, ...)
+              - pattern: $LIB.move($PATH, ...)
+              - pattern: $LIB.moveSync($PATH, ...)
+              - pattern: $LIB.outputFile($PATH, ...)
+              - pattern: $LIB.outputFileSync($PATH, ...)
+              - pattern: $LIB.outputJson($PATH, ...)
+              - pattern: $LIB.outputJsonSync($PATH, ...)
+              - pattern: $LIB.readJson($PATH, ...)
+              - pattern: $LIB.readJsonSync($PATH, ...)
+              - pattern: $LIB.writeJson($PATH, ...)
+              - pattern: $LIB.writeJsonSync($PATH, ...)
+              - pattern: $LIB.pathExists($PATH, ...)
+              - pattern: $LIB.pathExistsSync($PATH, ...)
+              - pattern: $LIB.createFile($PATH, ...)
+              - pattern: $LIB.createFileSync($PATH, ...)
+              - pattern: $LIB.createLink($PATH, ...)
+              - pattern: $LIB.createLinkSync($PATH, ...)
+              - pattern: $LIB.createSymlink($PATH, ...)
+              - pattern: $LIB.createSymlinkSync($PATH, ...)
+              - pattern: $LIB.open($PATH, ...)
+              - pattern: $LIB.openSync($PATH, ...)
+          - pattern-not: '$RES.sendFile($PATH, { root: process.cwd(), ... })'
+          - pattern-not: '$RES.sendfile($PATH, { root: process.cwd(), ... })'
+          - pattern-not: '$RES.download($PATH, { root: process.cwd(), ... })'
+          - focus-metavariable: $PATH
+
+    pattern-propagators:
+      - pattern: $TO = $FROM
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $FROM.$FIELD
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $FROM[$KEY]
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $FROM + $OTHER
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $OTHER + $FROM
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $FROM.$METHOD(...)
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $METHOD($FROM, ...)
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $METHOD(..., $FROM, ...)
+        from: $FROM
+        to: $TO
+      - pattern: $TO.push($FROM)
+        from: $FROM
+        to: $TO
+      - pattern: $TO = await $FROM
+        from: $FROM
+        to: $TO
+
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: sanitize(...)
+          - pattern: $PATH.basename(...)
+          - pattern: $PATH.extname(...)
+          - pattern: |
+              $PATH.replace(/[\]\[*,;'"`<>\\?\/]/g, '')
+          - pattern: |
+              $PATH.replace(/[./]/g, '')
+          - pattern: |
+              $PATH.replace(/[foobar/foobar]/g, '')
+          - pattern: |
+              $PATH.replace(/\//g, '')
+          - pattern: |
+              $PATH.replace(/\.|\//g, '')
+          - pattern: |
+              $PATHMOD.normalize($PATH).replace(/^(\.\.[\/\\])+/, '')
+          - pattern: |
+              $PATHMOD.normalize($PATH).replace(/(\.\.[\/\\])+/, '')
+          - pattern: |
+              $PATHMOD.normalize($PATH).replace(/(\.\.\/)+/, '')
+          - pattern: |
+              $PATHMOD.normalize($PATH).replace(/(\.\.\/)*/, '')
+          - pattern: |
+              $PATH.replace(new RegExp("[\\]\\[*,;'\"`<>\\?/]", 'g'), '')
+          - pattern: |
+              $PATH.replace(new RegExp("[\\]\\[*,;'\"`<>\\?/]", unknownFlags()), '')
+      - patterns:
+          - pattern-inside: |
+              if (!$PATHMOD.isAbsolute($PATH)) { ... }
+          - pattern-either:
+              - pattern: |
+                  $PATH.replace(/[.]/g, '')
+              - pattern: |
+                  $PATH.replace(/[..]/g, '')
+              - pattern: |
+                  $PATH.replace(/\./g, '')
+              - pattern: |
+                  $PATH.replace(/\.\.|BLA/g, '')
+              - pattern: |
+                  $PATH.replace(new RegExp("[.]", 'g'), '')
+              - pattern: |
+                  $PATH.replace(new RegExp("[.]", unknownFlags()), '')
+          - focus-metavariable: $PATH
+        by-side-effect: true
+      - patterns:
+          - pattern-inside: |
+              $VALUE = $PATHMOD.normalize(...);
+              ...
+          - pattern: |
+              if ($VALUE.startsWith("/home/user/www")) {
+                ...
+              }
+          - focus-metavariable: $VALUE
+        by-side-effect: true
+      - patterns:
+          - pattern-inside: |
+              $VALUE = $PATHMOD.join('/home/user/www', ...);
+              ...
+          - pattern: |
+              if ($VALUE.startsWith('/home/user/www')) {
+                ...
+              }
+          - focus-metavariable: $VALUE
+        by-side-effect: true
+      - patterns:
+          - pattern-inside: |
+              $VALUE = $FS.realpathSync(...);
+              ...
+          - pattern: |
+              if ($VALUE.startsWith("/home/user/www")) {
+                ...
+              }
+          - focus-metavariable: $VALUE
+        by-side-effect: true
+      - patterns:
+          - pattern: |
+              if (isPathInside($VALUE, ...)) {
+                ...
+              }
+          - focus-metavariable: $VALUE
+        by-side-effect: true
+      - patterns:
+          - pattern-inside: |
+              $VALUE = $PATHMOD.join($ROOT, ...);
+              ...
+          - pattern: |
+              if (pathIsInside($VALUE, $ROOT)) {
+                ...
+              }
+          - focus-metavariable: $VALUE
+        by-side-effect: true

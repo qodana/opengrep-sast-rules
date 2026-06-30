@@ -1,0 +1,41 @@
+rules:
+  - id: csharp-codeql-xss-asp
+    languages: [ csharp ]
+    severity: ERROR
+    message: Tainted data reaches HTML output
+    mode: taint
+
+    pattern-sources:
+      - pattern-either:
+          - pattern: $BOX.Text
+          - pattern: $CONTEXT.Request.QueryString[$KEY]
+          - pattern: $CONTEXT.Request.Unvalidated.QueryString[$KEY]
+          - pattern: $CONTEXT.Request[$KEY]
+          - pattern: $REQUEST.RawUrl
+
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $CONTEXT.Response.Write($VALUE)
+              - pattern: $HTML.Raw($VALUE)
+              - pattern: new HtmlString($VALUE)
+              - pattern: new MvcHtmlString($VALUE)
+              - pattern: new StringContent($VALUE)
+              - pattern: calendar.Caption = $VALUE
+              - pattern: table.Caption = $VALUE
+              - pattern: label.Text = $VALUE
+          - focus-metavariable: $VALUE
+          - pattern-not: new StringContent(HttpUtility.HtmlEncode(...))
+          - pattern-not: new StringContent(HttpUtility.UrlEncode(...))
+      - pattern: $REQUEST.RawUrl
+
+    pattern-propagators:
+      - pattern: $SB.AppendFormat($FORMAT, $VALUE)
+        from: $VALUE
+        to: $SB
+
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: HttpUtility.HtmlEncode(...)
+          - pattern: HttpUtility.UrlEncode(...)
+          - pattern: int.Parse(...)

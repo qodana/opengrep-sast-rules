@@ -1,0 +1,169 @@
+rules:
+  - id: server-side-request-forgery
+    message: User-controlled URL reaches an outgoing request sink.
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR
+    mode: taint
+
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $REQ.url
+              - pattern: $REQ.body
+              - pattern: $REQ.body.$PARAM
+              - pattern: $REQ.json()
+              - pattern: $REQ.query
+              - pattern: $REQ.query.$PARAM
+              - pattern: $REQ.params
+              - pattern: $REQ.params.$PARAM
+              # Next.js
+              - pattern: |
+                  import { $NEXT_REQUEST } from 'next/server'
+                  ...
+                  function $FUNC($REQ: $NEXT_REQUEST) {
+                    ...
+                  }
+          - metavariable-regex:
+              metavariable: $REQ
+              regex: 'req|request|ctx|context'
+          - focus-metavariable: $REQ
+      # Koa
+      - patterns:
+          - pattern-either:
+              - pattern: |
+                  $ROUTE = require('koa-route')
+                  ...
+                  $ROUTE.get($PATH, ($CTX, $PARAM, ...) => { ... })
+              - pattern: |
+                  $ROUTE = require('koa-route')
+                  ...
+                  $ROUTE.get($PATH, function ($CTX, $PARAM, ...) { ... })
+          - focus-metavariable: $PARAM
+      # Apollo
+      - patterns:
+          - pattern: |
+              import { ... } from '@apollo/server'
+              ...
+              {$FUNC: async (..., { $FILES }) => {...}}
+          - focus-metavariable: $FILES
+
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: fetch($URL, ...)
+              - pattern: nodeFetch($URL, ...)
+              - pattern: request($URL, ...)
+              - pattern: request.get($URL, ...)
+              - pattern: requestPromise($URL, ...)
+              - pattern: new WebSocket($URL, ...)
+              - pattern: new ws($URL, ...)
+              # Axios
+              - patterns:
+                  - pattern-either:
+                      - pattern: $AXIOS.get($URL, ...)
+                      - pattern: $AXIOS.post($URL, ...)
+                      - pattern: |
+                          $AXIOS({url: $URL, ...})
+                      - pattern: |
+                          $AXIOS({ url: $URL, ...})
+                  - metavariable-regex:
+                      metavariable: $AXIOS
+                      regex: '^(axios|Axios)$'
+              - patterns:
+                  - pattern-either:
+                      - pattern: $HTTP.get($URL, ...)
+                      - pattern: $HTTP.request($URL, ...)
+                  - metavariable-regex:
+                      metavariable: $HTTP
+                      regex: '^(http|https)$'
+              - pattern: |
+                  import { get } from 'https';
+                  ...
+                  get($URL, ...)
+              - pattern: |
+                  import { get } from 'http';
+                  ...
+                  get($URL, ...)
+              - pattern: |
+                  import got from 'got';
+                  ...
+                  got($URL, ...)
+              # JSDOM
+              - pattern: |
+                  import { $JSDOM } from "jsdom"
+                  ...
+                  $JSDOM.fromURL($URL, ...)
+              - pattern: |
+                  new JSDOM($HTML, { url: $URL, resources: "usable", ... })
+              - pattern: |
+                  new JSDOM($URL, { resources: "usable", ... })
+              - pattern: new ResourceLoader(...).fetch($URL, ...)
+              - patterns:
+                  - pattern-inside: |
+                      class $C extends ResourceLoader { ... }
+                  - pattern: super.fetch($URL, ...)
+              # Closure
+              - pattern: |
+                  $XHR_IO = goog.require('goog.net.XhrIo')
+                  ...
+                  $XHR_IO.send($URL, ...)
+              - pattern: |
+                  $URI = goog.require('goog.Uri')
+                  ...
+                  new $URI($URL, ...)
+              #  chrome-remote-interface (CDP)
+              - pattern: |
+                  $CDP = require("chrome-remote-interface")
+                  ...
+                  $CLIENT = await $CDP(...);
+                  ...
+                  $CLIENT.request({url: $URL}, ...)
+              - pattern: |
+                  $CDP = require("chrome-remote-interface")
+                  ...
+                  $CLIENT = await $CDP(...)
+                  ...
+                  $CLIENT.Page.navigate({url: $URL, ...})
+              - pattern: |
+                  $CDP = require("chrome-remote-interface")
+                  ...
+                  $CDP(...).catch((...) => {}).then(($CLIENT) => {
+                    ...
+                    $CLIENT.request({url: $URL}, ...)
+                    ...
+                  })
+              - pattern: |
+                  $CDP = require("chrome-remote-interface");
+                  ...
+                  $CDP(...).catch((...) => {}).then(($CLIENT) => {
+                    ...
+                     $CLIENT.Page.navigate({url: $URL, ...})
+                    ...
+                  })
+              - pattern: |
+                  $CDP = require("chrome-remote-interface")
+                  ...
+                  $CDP(..., ($CLIENT) => {
+                    ...
+                    $CLIENT.request({url: $URL}, ...)
+                    ...
+                  })
+              - pattern: |
+                  $CDP = require("chrome-remote-interface");
+                  ...
+                  $CDP(..., ($CLIENT) => {
+                    ...
+                     $CLIENT.Page.navigate({url: $URL, ...})
+                    ...
+                  })
+          - focus-metavariable: $URL
+
+    pattern-sanitizers:
+      - pattern: encodeURIComponent(...)
+
+    pattern-propagators:
+      - pattern: $ENTRIES.forEach(($ENTRY) => { ... })
+        from: $ENTRIES
+        to: $ENTRY
