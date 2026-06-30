@@ -1,0 +1,142 @@
+rules:
+- id: command-injection-array-manipulation
+  message: >-
+    Detected user input being used in array arguments that are then passed to command
+    execution functions. When arrays containing user input are used with spawn/execFile,
+    especially with shell commands or when using array methods like join(), concat(), or
+    push(), this can lead to command injection. Validate user input and avoid using
+    shell interpreters.
+  metadata:
+    cwe:
+    - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
+    owasp:
+    - A01:2017 - Injection
+    - A03:2021 - Injection
+    category: security
+    technology:
+    - javascript
+    - nodejs
+    references:
+    - https://owasp.org/www-community/attacks/Command_Injection
+    cwe2022-top25: true
+    cwe2021-top25: true
+    subcategory:
+    - vuln
+    likelihood: MEDIUM
+    impact: HIGH
+    confidence: MEDIUM
+  languages:
+  - javascript
+  - typescript
+  severity: ERROR
+  mode: taint
+  pattern-sources:
+  - patterns:
+    - pattern-either:
+      # HTTP request sources
+      - pattern: $REQ.query
+      - pattern: $REQ.query.$PARAM
+      - pattern: url.parse($REQ.url, ...).query
+      - pattern: url.parse($REQ.url, ...).query.$PARAM
+      - pattern: $REQ.body
+      - pattern: $REQ.body.$PARAM
+      - pattern: $REQ.params
+      - pattern: $REQ.params.$PARAM
+      - pattern: $CTX.params
+      - pattern: $CTX.params.$PARAM
+      # Command line arguments
+      - pattern: process.argv
+      - pattern: process.argv.slice(...)
+      - pattern: require('yargs').argv
+      - pattern: require('minimist')(...)
+      # Function parameters
+      - patterns:
+        - pattern: $PARAM
+        - pattern-inside: |
+            module.exports.$FUNC = function(..., $PARAM, ...) {
+              ...
+            }
+  pattern-sinks:
+  - patterns:
+    - pattern-either:
+      # Arrays with join() used in exec
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.exec([..., $TAINT, ...].join(...), ...)
+          - pattern: exec([..., $TAINT, ...].join(...), ...)
+          - pattern: $CP.execSync([..., $TAINT, ...].join(...), ...)
+          - pattern: execSync([..., $TAINT, ...].join(...), ...)
+        - focus-metavariable: $TAINT
+      # Spawn with shell and array concat
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.spawn($CMD, [...].concat($TAINT), ...)
+          - pattern: spawn($CMD, [...].concat($TAINT), ...)
+          - pattern: $CP.spawn($CMD, [...].concat([..., $TAINT, ...]), ...)
+          - pattern: spawn($CMD, [...].concat([..., $TAINT, ...]), ...)
+        - focus-metavariable: $TAINT
+      # execFile/spawn with shell flag and tainted arguments
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.spawn($SH, ["-c", $TAINT, ...], ...)
+          - pattern: spawn($SH, ["-c", $TAINT, ...], ...)
+          - pattern: $CP.spawn($SH, ["/C", $TAINT, ...], ...)
+          - pattern: spawn($SH, ["/C", $TAINT, ...], ...)
+          - pattern: $CP.spawn($SH, ["/c", $TAINT, ...], ...)
+          - pattern: spawn($SH, ["/c", $TAINT, ...], ...)
+        - metavariable-regex:
+            metavariable: $SH
+            regex: ^["\']?(sh|bash|cmd\.exe|cmd|zsh|ksh|csh|tcsh)["\']?$
+        - focus-metavariable: $TAINT
+      # execFile with bash/sh and args array containing taint
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.execFile($SH, $ARGS, ...)
+          - pattern: execFile($SH, $ARGS, ...)
+        - metavariable-regex:
+            metavariable: $SH
+            regex: ^["\']?(/bin/)?(sh|bash|cmd\.exe|cmd|zsh|ksh|csh|tcsh)["\']?$
+        - focus-metavariable: $ARGS
+    - pattern-either:
+      - pattern-inside: |
+          $CP = require('child_process')
+          ...
+      - pattern-inside: |
+          import $CP from 'child_process'
+          ...
+      - pattern-inside: |
+          const { ..., exec, ... } = require('child_process')
+          ...
+      - pattern-inside: |
+          const { ..., execSync, ... } = require('child_process')
+          ...
+      - pattern-inside: |
+          const { ..., spawn, ... } = require('child_process')
+          ...
+      - pattern-inside: |
+          const { ..., spawnSync, ... } = require('child_process')
+          ...
+      - pattern-inside: |
+          const { ..., execFile, ... } = require('child_process')
+          ...
+      - pattern-inside: |
+          const { ..., execFileSync, ... } = require('child_process')
+          ...
+      - pattern-inside: |
+          import { ..., exec, ... } from 'child_process'
+          ...
+      - pattern-inside: |
+          import { ..., execSync, ... } from 'child_process'
+          ...
+      - pattern-inside: |
+          import { ..., spawn, ... } from 'child_process'
+          ...
+      - pattern-inside: |
+          import { ..., spawnSync, ... } from 'child_process'
+          ...
+      - pattern-inside: |
+          import { ..., execFile, ... } from 'child_process'
+          ...
+      - pattern-inside: |
+          import { ..., execFileSync, ... } from 'child_process'
+          ...

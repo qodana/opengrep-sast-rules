@@ -1,0 +1,150 @@
+rules:
+  - id: command-line-argument-command-injection
+    message: Command line input flows into a shell command.
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR
+    mode: taint
+
+    pattern-sources:
+      - pattern-either:
+          - patterns:
+              - pattern: process.argv
+              - pattern-not-inside: process.argv[$IDX]
+          - patterns:
+              - pattern: process.argv[$IDX]
+              - metavariable-comparison:
+                  metavariable: $IDX
+                  comparison: $IDX >= 2
+          - patterns:
+              - pattern: process.env
+              - pattern-not-inside: process.env[$VAR]
+          - patterns:
+              - pattern: process.env[$VAR]
+              - metavariable-regex:
+                  metavariable: $VAR
+                  regex: "(?i)^[\\'\"]?(?!(?:GITHUB_[A-Z0-9_]*|ACTIONS_[A-Z0-9_]*|RUNNER_[A-Z0-9_]*|CI|NODE_ENV)[\\'\"]?$)[A-Z_][A-Z0-9_]*[\\'\"]?$"
+          - pattern: require('get-them-args')
+          - pattern: require("get-them-args")
+          - pattern: require('yargs')
+          - pattern: require("yargs")
+          - pattern: require('optimist')
+          - pattern: require("optimist")
+          - pattern: require('arg')
+          - pattern: require("arg")
+          - pattern: require('shelljs')
+          - pattern: require("shelljs")
+          - pattern: require('meow')
+          - pattern: require("meow")
+          - patterns:
+              - pattern: |
+                  $MEOW = require('meow')
+                  ...
+                  $SRC = $MEOW(...)
+              - focus-metavariable: $SRC
+          - patterns:
+              - pattern: |
+                  $MEOW = require("meow")
+                  ...
+                  $SRC = $MEOW(...)
+              - focus-metavariable: $SRC
+          - pattern: require('dashdash')
+          - pattern: require("dashdash")
+          - patterns:
+              - pattern: |
+                  $DASH = require('dashdash')
+                  ...
+                  $SRC = $DASH.$FUNC(...)
+              - focus-metavariable: $SRC
+          - patterns:
+              - pattern: |
+                  $DASH = require("dashdash")
+                  ...
+                  $SRC = $DASH.$FUNC(...)
+              - focus-metavariable: $SRC
+          - pattern: require('command-line-args')
+          - pattern: require("command-line-args")
+          - patterns:
+              - pattern: |
+                  $CLA = require('command-line-args')
+                  ...
+                  $SRC = $CLA(...)
+              - focus-metavariable: $SRC
+          - patterns:
+              - pattern: |
+                  $CLA = require("command-line-args")
+                  ...
+                  $SRC = $CLA(...)
+              - focus-metavariable: $SRC
+          - pattern: require('argparse')
+          - pattern: require("argparse")
+          - patterns:
+              - pattern: |
+                  const { $ARG_PARSE } = require('argparse')
+                  ...
+                  new $ARG_PARSE(...)
+          - patterns:
+              - pattern: |
+                  const { $ARG_PARSE } = require("argparse")
+                  ...
+                  new $ARG_PARSE(...)
+          - pattern: require('commander')
+          - pattern: require("commander")
+          - patterns:
+              - pattern: |
+                  const { $COMMAND } = require('commander')
+                  ...
+                  new $COMMAND(...)
+          - patterns:
+              - pattern: |
+                  const { $COMMAND } = require("commander")
+                  ...
+                  new $COMMAND(...)
+          - patterns:
+              - pattern: |
+                  const { $COMMAND } = require('commander')
+                  ...
+                  $SRC = new $COMMAND(...)
+              - focus-metavariable: $SRC
+          - patterns:
+              - pattern: |
+                  const { $COMMAND } = require("commander")
+                  ...
+                  $SRC = new $COMMAND(...)
+              - focus-metavariable: $SRC
+          - patterns:
+              - pattern: |
+                  import { $ACTIONS } from "@actions/core";
+                  ...
+                  $ACTIONS($PARAM)
+              - focus-metavariable: $PARAM
+
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: |
+                  $CP = require('child_process')
+                  ...
+                  $CP.exec($CMD, ...)
+              - pattern: |
+                  $CP = require("child_process")
+                  ...
+                  $CP.exec($CMD, ...)
+              - pattern: |
+                  $CP = require('child_process')
+                  ...
+                  $CP.execSync($CMD, ...)
+              - pattern: |
+                  $CP = require("child_process")
+                  ...
+                  $CP.execSync($CMD, ...)
+              - pattern: |
+                  import { $EXEC } from '@actions/exec'
+                  ...
+                  $EXEC($CMD, ...)
+              - pattern: |
+                  import { $EXEC } from "@actions/exec"
+                  ...
+                  $EXEC($CMD, ...)
+          - focus-metavariable: $CMD

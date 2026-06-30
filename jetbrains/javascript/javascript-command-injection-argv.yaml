@@ -1,0 +1,245 @@
+rules:
+- id: command-injection-from-command-line-args
+  message: >-
+    Detected command line arguments flowing into a command execution function.
+    This could lead to a command injection vulnerability where an attacker could pass
+    malicious arguments to execute arbitrary commands. Validate and sanitize command line
+    arguments before using them in command execution functions.
+  metadata:
+    cwe:
+    - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
+    owasp:
+    - A01:2017 - Injection
+    - A03:2021 - Injection
+    category: security
+    technology:
+    - javascript
+    - nodejs
+    references:
+    - https://owasp.org/www-community/attacks/Command_Injection
+    cwe2022-top25: true
+    cwe2021-top25: true
+    subcategory:
+    - vuln
+    likelihood: MEDIUM
+    impact: HIGH
+    confidence: MEDIUM
+  languages:
+  - javascript
+  - typescript
+  severity: ERROR
+  mode: taint
+  pattern-sources:
+  - patterns:
+    - pattern-either:
+      # process.argv
+      - pattern: process.argv
+      - pattern: process.argv[$IDX]
+      - pattern: process.argv.slice(...)
+      # yargs
+      - pattern: require('yargs').argv
+      - pattern: require('yargs').argv.$PROP
+      # minimist
+      - pattern: require('minimist')(...)
+      - pattern: require('minimist')(...).$PROP
+      # subarg
+      - pattern: require('subarg')(...)
+      - pattern: require('subarg')(...).$PROP
+      # yargs-parser
+      - pattern: require('yargs-parser')(...)
+      - pattern: require('yargs-parser')(...).$PROP
+      # arg
+      - pattern: require('arg')(...)
+      - pattern: require('arg')(...).$PROP
+      # command-line-args
+      - pattern: require('command-line-args')(...)
+      - pattern: require('command-line-args')(...).$PROP
+      # meow
+      - pattern: require('meow')(...)
+      - pattern: require('meow')(...).input
+      - pattern: require('meow')(...).input[$IDX]
+  # args library - requires import context
+  - patterns:
+    - pattern-either:
+      - pattern: $ARGS.parse(...)
+      - pattern: $ARGS.parse(...).$PROP
+    - pattern-either:
+      - pattern-inside: |
+          $ARGS = require('args')
+          ...
+      - pattern-inside: |
+          import $ARGS from 'args'
+          ...
+  # argparse library - requires import context
+  - patterns:
+    - pattern-either:
+      - pattern: $PARSER.parse_args()
+      - pattern: $PARSER.parse_args().$PROP
+    - pattern-either:
+      - pattern-inside: |
+          $PARSER = require('argparse')
+          ...
+      - pattern-inside: |
+          import $PARSER from 'argparse'
+          ...
+      - pattern: require('meow')(...).flags
+      - pattern: require('meow')(...).flags.$PROP
+      # dashdash
+      - pattern: require('dashdash').parse(...)
+      - pattern: require('dashdash').parse(...).$PROP
+      - pattern: $PARSER.parse()
+      - pattern: $PARSER.parse().$PROP
+      # commander
+      - pattern: $PROGRAM.opts()
+      - pattern: $PROGRAM.opts().$PROP
+      - pattern: $PROGRAM.$PROP
+      # get-them-args
+      - pattern: require('get-them-args')()
+      - pattern: require('get-them-args')().$PROP
+      # optimist
+      - pattern: require('optimist').argv
+      - pattern: require('optimist').argv.$PROP
+    - pattern-not-inside: |
+        if (typeof $X === "number") {
+          ...
+        }
+    - pattern-not-inside: |
+        if (!isNaN($X)) {
+          ...
+        }
+  pattern-sinks:
+  - patterns:
+    - pattern-either:
+      # child_process.exec and variants - only first argument (no options object)
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.exec($CMD)
+          - pattern: $CP.execSync($CMD)
+          - pattern: exec($CMD)
+          - pattern: execSync($CMD)
+        - focus-metavariable: $CMD
+      # child_process.spawn and spawnSync - command argument
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.spawn($CMD, ...)
+          - pattern: $CP.spawnSync($CMD, ...)
+          - pattern: spawn($CMD, ...)
+          - pattern: spawnSync($CMD, ...)
+        - focus-metavariable: $CMD
+      # child_process.spawn and spawnSync - args argument
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.spawn($CMD, $ARGS)
+          - pattern: $CP.spawn($CMD, $ARGS, $OPTS)
+          - pattern: $CP.spawnSync($CMD, $ARGS)
+          - pattern: $CP.spawnSync($CMD, $ARGS, $OPTS)
+          - pattern: spawn($CMD, $ARGS)
+          - pattern: spawn($CMD, $ARGS, $OPTS)
+          - pattern: spawnSync($CMD, $ARGS)
+          - pattern: spawnSync($CMD, $ARGS, $OPTS)
+        - focus-metavariable: $ARGS
+      # child_process.execFile and execFileSync - command argument
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.execFile($CMD, ...)
+          - pattern: $CP.execFileSync($CMD, ...)
+          - pattern: execFile($CMD, ...)
+          - pattern: execFileSync($CMD, ...)
+        - focus-metavariable: $CMD
+      # child_process.execFile and execFileSync - args argument
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.execFile($FILE, $ARGS)
+          - pattern: $CP.execFile($FILE, $ARGS, $OPTS, ...)
+          - pattern: $CP.execFileSync($FILE, $ARGS)
+          - pattern: $CP.execFileSync($FILE, $ARGS, $OPTS)
+          - pattern: execFile($FILE, $ARGS)
+          - pattern: execFile($FILE, $ARGS, $OPTS, ...)
+          - pattern: execFileSync($FILE, $ARGS)
+          - pattern: execFileSync($FILE, $ARGS, $OPTS)
+        - focus-metavariable: $ARGS
+      # child_process.fork
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.fork($CMD, ...)
+          - pattern: fork($CMD, ...)
+        - focus-metavariable: $CMD
+      # spawn with shell arguments
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.spawn($SH, [$FLAG, $CMD, ...], ...)
+          - pattern: spawn($SH, [$FLAG, $CMD, ...], ...)
+        - metavariable-regex:
+            metavariable: $FLAG
+            regex: ^["\'](-c|/c|/C)["\']$
+        - focus-metavariable: $CMD
+      # execFile with shell and dangerous args
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.execFile($SH, [..., $CMD], ...)
+          - pattern: execFile($SH, [..., $CMD], ...)
+        - focus-metavariable: $CMD
+    - pattern-either:
+      - pattern-inside: |
+          $CP = require('child_process')
+          ...
+      - pattern-inside: |
+          import $CP from 'child_process'
+          ...
+      - pattern-inside: |
+          import * as $CP from 'child_process'
+          ...
+      - pattern-inside: |
+          import { ..., exec, ... } from 'child_process'
+          ...
+      - pattern-inside: |
+          import { ..., execSync, ... } from 'child_process'
+          ...
+      - pattern-inside: |
+          import { ..., spawn, ... } from 'child_process'
+          ...
+      - pattern-inside: |
+          import { ..., spawnSync, ... } from 'child_process'
+          ...
+      - pattern-inside: |
+          import { ..., execFile, ... } from 'child_process'
+          ...
+      - pattern-inside: |
+          import { ..., execFileSync, ... } from 'child_process'
+          ...
+      - pattern-inside: |
+          import { ..., fork, ... } from 'child_process'
+          ...
+      - pattern-inside: |
+          const { ..., exec, ... } = require('child_process')
+          ...
+      - pattern-inside: |
+          const { ..., execSync, ... } = require('child_process')
+          ...
+      - pattern-inside: |
+          const { ..., spawn, ... } = require('child_process')
+          ...
+      - pattern-inside: |
+          const { ..., spawnSync, ... } = require('child_process')
+          ...
+      - pattern-inside: |
+          const { ..., execFile, ... } = require('child_process')
+          ...
+      - pattern-inside: |
+          const { ..., execFileSync, ... } = require('child_process')
+          ...
+      - pattern-inside: |
+          const { ..., fork, ... } = require('child_process')
+          ...
+  pattern-sanitizers:
+  - patterns:
+    - pattern-either:
+      # Validation functions
+      - pattern: isValidName(...)
+      - pattern: isSafeName(...)
+      - pattern: isValid(...)
+      - pattern: isSafe(...)
+      # Number conversions
+      - pattern: parseInt(...)
+      - pattern: parseFloat(...)
+      - pattern: Number(...)

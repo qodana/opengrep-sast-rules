@@ -1,0 +1,38 @@
+rules:
+  - id: csharp-codeql-url-redirect
+    languages: [ csharp ]
+    severity: ERROR
+    message: Tainted data reaches a redirect target
+    mode: taint
+
+    pattern-sources:
+      - pattern-either:
+          - pattern: $CTX.Request.QueryString[$KEY]
+          - patterns:
+              - pattern: public void $METHOD(..., [FromBody] string $VALUE, ...) { ... }
+              - focus-metavariable: $VALUE
+
+    pattern-sinks:
+      - pattern-either:
+          - pattern: $CTX.Response.Redirect($CTX.Request.QueryString[$KEY])
+          - pattern: $CTX.Response.AddHeader("Location", $CTX.Request.QueryString[$KEY])
+          - pattern: $CTX.Response.AppendHeader("Location", $CTX.Request.QueryString[$KEY])
+      - patterns:
+          - pattern-either:
+              - pattern: $SERVER.Transfer($URL)
+              - pattern: $CTX.Response.Redirect($"{$URL}.asp?param=foo")
+              - pattern: $CTX.Response.Redirect(string.Format("{0}.asp?param=foo", $URL))
+              - pattern: $CTX.Response.Redirect(string.Format("{1}.asp?{0}param=foo", $ARG, $URL))
+              - pattern: Redirect($URL)
+              - pattern: RedirectToActionPermanent($URL)
+              - pattern: RedirectToPage($URL)
+              - pattern: Response.Redirect($URL)
+              - pattern: Response.Headers.Add("location", $URL)
+              - pattern: Response.Headers.SetCommaSeparatedValues("location", $URL)
+              - pattern: Response.Headers.Append("location", $URL)
+              - pattern: Response.Headers.AppendCommaSeparatedValues("location", $URL)
+              - pattern: new Uri($URL)
+          - focus-metavariable: $URL
+      - patterns:
+          - pattern: $HEADERS[$KEY] = $URL
+          - focus-metavariable: $URL

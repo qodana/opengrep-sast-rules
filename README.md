@@ -41,6 +41,10 @@ header comments of every `.yml` rule file under `rules/lgpl/`, e.g.:
 ├── go/          java/
 ├── javascript/  python/
 ├── scala/
+├── jetbrains/                 # LGPL v3 + Commons Clause rules (JetBrains-authored)
+│   ├── LICENSE                # Commons Clause condition + full LGPL v3 text
+│   ├── csharp/
+│   └── javascript/
 └── rules/
     └── lgpl/                  # LGPL v3 rules (+ paired test cases)
         ├── LICENSE            # full LGPL v3 text
@@ -61,6 +65,7 @@ Each rule file `rule-<name>.yml` is paired with a test-case file
 | --- | --- | --- | --- |
 | `LICENSE` (root) and top-level language dirs (`c/`, `csharp/`, `go/`, `java/`, `javascript/`, `python/`, `scala/`) | MIT (Expat) | © 2011–present GitLab Inc. | Allowed. Retain the copyright notice and MIT license text in the product's third-party notices. |
 | `rules/lgpl/**` | LGPL v3.0 | © respective upstream authors (Find Security Bugs, MobSF, njsscan, GitLab Inc. and contributors) | Allowed. See the compliance notes below. |
+| `jetbrains/**` | LGPL v3.0 **+ Commons Clause** | © 2026 JetBrains s.r.o. | Restricted. The Commons Clause forbids selling a product or service whose value derives substantially from these rules. See `jetbrains/LICENSE`. |
 
 ### LGPL v3 compliance notes
 

@@ -1,0 +1,163 @@
+rules:
+- id: second-order-command-injection-git-hg
+  message: >-
+    Detected user input flowing into arguments for git, hg, or other commands that can
+    execute arbitrary code through options or repository URLs. Even when using execFile
+    (which doesn't interpret shell metacharacters), certain commands like 'git' and 'hg'
+    can be exploited through specially crafted arguments (e.g., --upload-pack, --config).
+    Validate repository URLs and command arguments against an allowlist, or use the '--'
+    separator before user-controlled values.
+  metadata:
+    cwe:
+    - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
+    - "CWE-88: Improper Neutralization of Argument Delimiters in a Command ('Argument Injection')"
+    owasp:
+    - A01:2017 - Injection
+    - A03:2021 - Injection
+    category: security
+    technology:
+    - javascript
+    - nodejs
+    - git
+    references:
+    - https://www.exploit-db.com/docs/english/44712-argument-injection-in-git.pdf
+    - https://owasp.org/www-community/attacks/Command_Injection
+    cwe2022-top25: true
+    cwe2021-top25: true
+    subcategory:
+    - vuln
+    likelihood: MEDIUM
+    impact: HIGH
+    confidence: MEDIUM
+  languages:
+  - javascript
+  - typescript
+  severity: ERROR
+  mode: taint
+  pattern-sources:
+  - patterns:
+    - pattern-either:
+      # HTTP request sources
+      - pattern: $REQ.query
+      - pattern: $REQ.query.$PARAM
+      - pattern: url.parse($REQ.url, ...).query
+      - pattern: url.parse($REQ.url, ...).query.$PARAM
+      - pattern: $REQ.body
+      - pattern: $REQ.body.$PARAM
+      - pattern: $REQ.params
+      - pattern: $REQ.params.$PARAM
+      - pattern: $CTX.params
+      - pattern: $CTX.params.$PARAM
+      - pattern: $CTX.query
+      - pattern: $CTX.query.$PARAM
+      # Command line arguments
+      - pattern: process.argv
+      - pattern: process.argv[$IDX]
+      - pattern: process.argv.slice(...)
+      - pattern: require('yargs').argv
+      - pattern: require('minimist')(...)
+  pattern-sinks:
+  - patterns:
+    - pattern-either:
+      # git commands with dangerous subcommands
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.execFile("git", [..., $ARG, ...], ...)
+          - pattern: execFile("git", [..., $ARG, ...], ...)
+          - pattern: $CP.spawn("git", [..., $ARG, ...], ...)
+          - pattern: spawn("git", [..., $ARG, ...], ...)
+        - pattern-either:
+          # Dangerous git subcommands that can execute code
+          - pattern-inside: |
+              $CP.execFile("git", ["clone", $ARG, ...], ...)
+              ...
+          - pattern-inside: |
+              execFile("git", ["clone", $ARG, ...], ...)
+              ...
+          - pattern-inside: |
+              $CP.execFile("git", ["fetch", $ARG, ...], ...)
+              ...
+          - pattern-inside: |
+              execFile("git", ["fetch", $ARG, ...], ...)
+              ...
+          - pattern-inside: |
+              $CP.execFile("git", ["ls-remote", $ARG, ...], ...)
+              ...
+          - pattern-inside: |
+              execFile("git", ["ls-remote", $ARG, ...], ...)
+              ...
+          - pattern-inside: |
+              $CP.execFile("git", ["pull", $ARG, ...], ...)
+              ...
+          - pattern-inside: |
+              execFile("git", ["pull", $ARG, ...], ...)
+              ...
+          - pattern-inside: |
+              $CP.execFile("git", ["push", $ARG, ...], ...)
+              ...
+          - pattern-inside: |
+              execFile("git", ["push", $ARG, ...], ...)
+              ...
+          - pattern-inside: |
+              $CP.execFile("git", ["remote", ..., $ARG, ...], ...)
+              ...
+          - pattern-inside: |
+              execFile("git", ["remote", ..., $ARG, ...], ...)
+              ...
+          - pattern-inside: |
+              $CP.execFile("git", ["submodule", ..., $ARG, ...], ...)
+              ...
+          - pattern-inside: |
+              execFile("git", ["submodule", ..., $ARG, ...], ...)
+              ...
+        - focus-metavariable: $ARG
+      # hg (mercurial) commands
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.execFile("hg", [..., $ARG, ...], ...)
+          - pattern: execFile("hg", [..., $ARG, ...], ...)
+          - pattern: $CP.spawn("hg", [..., $ARG, ...], ...)
+          - pattern: spawn("hg", [..., $ARG, ...], ...)
+        - focus-metavariable: $ARG
+      # User-controlled arguments array
+      - patterns:
+        - pattern-either:
+          - pattern: $CP.execFile("git", $ARGS, ...)
+          - pattern: execFile("git", $ARGS, ...)
+          - pattern: $CP.execFile("hg", $ARGS, ...)
+          - pattern: execFile("hg", $ARGS, ...)
+        - focus-metavariable: $ARGS
+    - pattern-either:
+      - pattern-inside: |
+          $CP = require('child_process')
+          ...
+      - pattern-inside: |
+          import $CP from 'child_process'
+          ...
+      - pattern-inside: |
+          const { ..., execFile, ... } = require('child_process')
+          ...
+      - pattern-inside: |
+          const { ..., spawn, ... } = require('child_process')
+          ...
+      - pattern-inside: |
+          import { ..., execFile, ... } from 'child_process'
+          ...
+      - pattern-inside: |
+          import { ..., spawn, ... } from 'child_process'
+          ...
+  pattern-sanitizers:
+  - patterns:
+    - pattern-either:
+      # Check for git@ prefix (SSH URLs are safer)
+      - patterns:
+        - pattern: $X
+        - pattern-inside: |
+            if ($X.startsWith("git@")) {
+              ...
+            }
+      # Check for -- separator usage
+      - patterns:
+        - pattern: $X
+        - pattern-inside: |
+            [..., "--", $X, ...]

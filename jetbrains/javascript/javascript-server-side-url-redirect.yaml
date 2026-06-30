@@ -1,0 +1,79 @@
+rules:
+- id: benchmark-server-side-url-redirect
+  message: User-controlled URL reaches a server-side redirect.
+  languages:
+  - javascript
+  - typescript
+  severity: ERROR
+  mode: taint
+  pattern-sources:
+  - pattern-either:
+    - pattern: $REQ.url
+    - pattern: $REQ._parsedUrl
+    - pattern: $REQ.nextUrl
+    - pattern: $REQ.query
+    - pattern: $REQ.query.$PARAM
+    - pattern: $REQ.query[$PARAM]
+    - pattern: $REQ.params
+    - pattern: $REQ.params.$PARAM
+    - pattern: $REQ.body
+    - pattern: $REQ.body.$PARAM
+    - pattern: $REQ.param(...)
+    - pattern: $CTX.query
+    - pattern: $CTX.query.$PARAM
+    - pattern: query.$PARAM
+  pattern-sinks:
+  - patterns:
+    - pattern-either:
+      - pattern: $RES.redirect($URL, ...)
+      - pattern: $CTX.redirect($URL, ...)
+      - pattern: $RES.header("Location", $URL, ...)
+      - pattern: $RES.header('Location', $URL, ...)
+      - pattern: $RES.set("Location", $URL, ...)
+      - pattern: $RES.set('Location', $URL, ...)
+      - pattern: |
+          $RES.writeHead($CODE, {Location: $URL}, ...)
+      - pattern: |
+          $RES.writeHead($CODE, { Location: $URL }, ...)
+      - pattern: Linking.openURL($URL, ...)
+      - pattern: $LINKING.openURL($URL, ...)
+    - focus-metavariable: $URL
+    - pattern-not: $RES.redirect('/users/' + $URL)
+    - pattern-not: $RES.redirect('/users/' + $REQ.params.$PARAM)
+    - pattern-not: $RES.redirect('users/' + $URL)
+    - pattern-not: $RES.redirect('users/' + $REQ.params.$PARAM)
+    - pattern-not: $RES.redirect('/u' + $URL)
+    - pattern-not: $RES.redirect('/u' + $REQ.params.$PARAM)
+    - pattern-not: $RES.redirect('/' + ('/u' + $REQ.params.$PARAM))
+    - pattern-not: $RES.redirect(['index.html?section=', ...].join(...))
+    - pattern-not: |
+        $RES.writeHead($CODE, { Location: '/local/' + $URL }, ...)
+    - pattern-not: |
+        $RES.writeHead($CODE, { Location: '//localhost/' + $URL }, ...)
+    - pattern-not-inside: |
+        if (VALID_REDIRECT === $URL) {
+          ...
+        }
+    - pattern-not-inside: |
+        if ($URL === 'semmle.com')
+          ...
+    - pattern-not-inside: |
+        if ($URL.startsWith("http://example.com/"))
+          ...
+    - pattern-not-inside: |
+        if (SAFE_TARGETS.hasOwnProperty($URL))
+          ...
+    - pattern-not-inside: |
+        if ($URL in SAFE_TARGETS)
+          ...
+    - pattern-not-inside: |
+        if (SAFE_TARGETS[$URL] != undefined)
+          ...
+    - pattern-not-inside: |
+        if (void(0) == SAFE_TARGETS[$URL])
+          ...
+        else
+          ...
+    - pattern-not-inside: |
+        if (Object.hasOwn(SAFE_TARGETS, $URL))
+          ...

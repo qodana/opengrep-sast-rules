@@ -1,0 +1,146 @@
+rules:
+- id: command-injection-third-party-libraries
+  message: >-
+    Detected user input flowing into third-party command execution libraries
+    (cross-spawn, exec, ssh2, opener, etc.). This could lead to a command
+    injection vulnerability. Validate and sanitize user input before passing to command
+    execution functions.
+  metadata:
+    cwe:
+    - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
+    owasp:
+    - A01:2017 - Injection
+    - A03:2021 - Injection
+    category: security
+    technology:
+    - javascript
+    - nodejs
+    references:
+    - https://owasp.org/www-community/attacks/Command_Injection
+    cwe2022-top25: true
+    cwe2021-top25: true
+    subcategory:
+    - vuln
+    likelihood: HIGH
+    impact: HIGH
+    confidence: MEDIUM
+  languages:
+  - javascript
+  - typescript
+  severity: ERROR
+  mode: taint
+  pattern-sources:
+  - patterns:
+    - pattern-either:
+      # HTTP request sources
+      - pattern: $REQ.query
+      - pattern: $REQ.query.$PARAM
+      - pattern: $REQ.query[$PARAM]
+      - pattern: $REQ.query.$PARAM[$IDX]
+      - pattern: $REQ.query[$PARAM][$IDX]
+      - pattern: url.parse($REQ.url, ...).query
+      - pattern: url.parse($REQ.url, ...).query.$PARAM
+      - pattern: url.parse($REQ.url, ...).query[$PARAM]
+      - pattern: url.parse($REQ.url, ...).query.$PARAM[$IDX]
+      - pattern: url.parse($REQ.url, ...).query[$PARAM][$IDX]
+      - pattern: $REQ.body
+      - pattern: $REQ.body.$PARAM
+      - pattern: $REQ.body[$PARAM]
+      - pattern: $REQ.params
+      - pattern: $REQ.params.$PARAM
+      - pattern: $REQ.params[$PARAM]
+      - pattern: $CTX.params
+      - pattern: $CTX.params.$PARAM
+      - pattern: $CTX.params[$PARAM]
+      - pattern: $CTX.query
+      - pattern: $CTX.query.$PARAM
+      - pattern: $CTX.query[$PARAM]
+      # Command line arguments
+      - pattern: process.argv
+      - pattern: process.argv[$IDX]
+      - pattern: process.argv.slice(...)
+      - pattern: require('yargs').argv
+      - pattern: require('minimist')(...)
+  pattern-sinks:
+  - patterns:
+    - pattern-either:
+      # cross-spawn
+      - patterns:
+        - pattern: require('cross-spawn')($CMD, ...)
+        - focus-metavariable: $CMD
+      - patterns:
+        - pattern: require('cross-spawn').sync($CMD, ...)
+        - focus-metavariable: $CMD
+      # cross-spawn-async
+      - patterns:
+        - pattern: require('cross-spawn-async')($CMD, ...)
+        - focus-metavariable: $CMD
+      # exec
+      - patterns:
+        - pattern: require('exec')($CMD, ...)
+        - focus-metavariable: $CMD
+      # exec-async
+      - patterns:
+        - pattern: require('exec-async')($CMD, ...)
+        - focus-metavariable: $CMD
+      # remote-exec - second argument is the command
+      - patterns:
+        - pattern: require('remote-exec')($TARGET, $CMD, ...)
+        - focus-metavariable: $CMD
+      # ssh2 - Client().exec()
+      - patterns:
+        - pattern: $SSH2.exec($CMD, ...)
+        - focus-metavariable: $CMD
+      # ssh2-streams - SSH2Stream().exec() - exactly 2 args
+      - patterns:
+        - pattern: $SSH2STREAM.exec($BOOL, $CMD)
+        - focus-metavariable: $CMD
+      # ssh2-streams - SSH2Stream().exec() - 3+ args
+      - patterns:
+        - pattern: $SSH2STREAM.exec($BOOL, $CMD, ...)
+        - focus-metavariable: $CMD
+      # foreground-child
+      - patterns:
+        - pattern: require('foreground-child')($CMD, ...)
+        - focus-metavariable: $CMD
+      # opener - command option (simplified pattern)
+      - patterns:
+        - pattern: $OPENER($URL, $OPTS)
+        - focus-metavariable: $OPTS
+    - pattern-either:
+      - pattern-inside: |
+          require('cross-spawn')
+          ...
+      - pattern-inside: |
+          require('cross-spawn-async')
+          ...
+      - pattern-inside: |
+          require('exec')
+          ...
+      - pattern-inside: |
+          require('exec-async')
+          ...
+      - pattern-inside: |
+          require('remote-exec')
+          ...
+      - pattern-inside: |
+          require('ssh2')
+          ...
+      - pattern-inside: |
+          require('ssh2-streams')
+          ...
+      - pattern-inside: |
+          $X = require('ssh2-streams')
+          ...
+      - pattern-inside: |
+          const $X = require('ssh2-streams')
+          ...
+      - pattern-inside: |
+          require('ssh2-streams').SSH2Stream
+          ...
+      - pattern-inside: |
+          require('foreground-child')
+          ...
+      - pattern-inside: |
+          require('opener')
+          ...

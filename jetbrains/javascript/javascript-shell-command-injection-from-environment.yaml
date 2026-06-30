@@ -1,0 +1,17 @@
+rules:
+  - id: javascript-codeql-shell-command-injection-from-environment
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR
+    message: Environment-controlled path reaches a shell command
+    mode: taint
+
+    pattern-sources:
+      - pattern: path.join(__dirname, ...)
+
+    pattern-sinks:
+      - pattern-either:
+          - pattern: $CP.execSync('rm -rf ' + path.join(__dirname, ...), ...)
+          - pattern: $EXECA.shell('rm -rf ' + path.join(__dirname, ...), ...)
+          - pattern: $EXECA.shellSync('rm -rf ' + path.join(__dirname, ...), ...)

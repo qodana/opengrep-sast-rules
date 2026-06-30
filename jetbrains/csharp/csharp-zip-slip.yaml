@@ -1,0 +1,22 @@
+rules:
+  - id: csharp-codeql-zip-slip
+    languages: [ csharp ]
+    severity: ERROR
+    message: Archive entry path reaches a filesystem write
+    mode: taint
+
+    pattern-sources:
+      - pattern: $ENTRY.FullName
+
+    pattern-sanitizers:
+      - pattern: Path.GetFileName(...)
+      - pattern: $PATH.Substring($PATH.LastIndexOf("\\"))
+
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $ENTRY.ExtractToFile($PATH, ...)
+              - pattern: new FileStream($PATH, ...)
+              - pattern: File.Create($PATH)
+              - pattern: new FileInfo($PATH)
+          - focus-metavariable: $PATH

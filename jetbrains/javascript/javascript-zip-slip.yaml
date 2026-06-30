@@ -1,0 +1,66 @@
+rules:
+  - id: javascript-codeql-zip-slip
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR
+    message: Archive entry path reaches a filesystem write
+    mode: taint
+
+    pattern-sources:
+      - pattern-either:
+          - pattern: $ENTRY.path
+          - pattern: $ENTRY.entryName
+          - pattern: $HEADER.name
+          - pattern: $HEADER.linkname
+          - patterns:
+              - pattern-either:
+                  - pattern: |
+                      for (const $NAME in $ZIP.files) {
+                        ...
+                      }
+                  - pattern: |
+                      for (let $NAME in $ZIP.files) {
+                        ...
+                      }
+                  - pattern: |
+                      for (var $NAME in $ZIP.files) {
+                        ...
+                      }
+              - focus-metavariable: $NAME
+          - patterns:
+              - pattern-either:
+                  - pattern: $ZIP.forEach(($NAME, $FILE) => ...)
+                  - pattern: $ZIP.forEach(function ($NAME, $FILE) { ... })
+              - focus-metavariable: $NAME
+
+    pattern-sanitizers:
+      - pattern-either:
+          - patterns:
+              - pattern: |
+                  const $PATH_MOD = require('path');
+                  ...
+                  $PATH_MOD.basename($PATH)
+              - focus-metavariable: $PATH
+          - patterns:
+              - pattern: |
+                  if ($PATH.indexOf('..') == -1) {
+                    ...
+                  }
+              - focus-metavariable: $PATH
+
+    pattern-sinks:
+      - pattern-either:
+          - pattern: $FS.createWriteStream(...)
+          - pattern: $FS.linkSync(...)
+          - pattern: $FS.writeFileSync(...)
+          - pattern: |
+              Writer({path: ...})
+          - pattern: |
+              $FSTREAM.Writer({path: ...})
+          - pattern: |
+              require('fstream').Writer({path: ...})
+          - pattern: |
+              require("fstream").Writer({path: ...})
+          - pattern: $FS.openSync(..., "w", ...)
+          - pattern: $FS.openSync(..., "w")

@@ -1,0 +1,218 @@
+rules:
+- id: benchmark-unsafe-shell-command-construction
+  message: Library input is used to build a shell command.
+  languages:
+  - javascript
+  - typescript
+  severity: ERROR
+  mode: taint
+  pattern-sources:
+  - patterns:
+    - pattern-either:
+      - pattern: module.exports.$NAME = function ($INPUT) { ... }
+      - pattern: module.exports.$NAME = function ($SAFE, $INPUT) { ... }
+      - pattern: module.exports = function ($INPUT) { ... }
+      - pattern: $OBJ.prototype.$METHOD = function ($INPUT) { ... }
+      - pattern: constructor($INPUT) { ... }
+      - pattern: $METHOD($INPUT) { ... }
+      - pattern: $METHOD($SAFE, $INPUT) { ... }
+      - pattern: function $FN($INPUT) { ... }
+      - pattern: function $FN($SAFE, $INPUT) { ... }
+    - focus-metavariable: $INPUT
+  pattern-sinks:
+  - patterns:
+    - pattern-either:
+      - pattern: $CP.exec($VALUE, ...)
+      - pattern: $CP.execSync($VALUE, ...)
+      - pattern: '$CP.execFile($CMD, $VALUE, {shell: true}, ...)'
+      - pattern: '$CP.execFileSync($CMD, $VALUE, {shell: true}, ...)'
+      - pattern: '$CP.spawn($CMD, $VALUE, {shell: true}, ...)'
+      - pattern: '$CP.spawnSync($CMD, $VALUE, {shell: true}, ...)'
+      - pattern: spawn($CMD, $VALUE, $OPTS)
+      - pattern: exec($VALUE, ...)
+      - pattern: asyncExec($VALUE, ...)
+      - pattern: $REQ("mz/child_process").exec($VALUE, ...)
+      - pattern: $REQ('mz/child_process').exec($VALUE, ...)
+      - pattern: $OBJ.cp.exec($VALUE, ...)
+      - pattern: indirectShell($CMD, $VALUE, $OPTS)
+    - focus-metavariable: $VALUE
+  - patterns:
+    - pattern-either:
+      - pattern: $CMD = $PREFIX + $VALUE
+      - pattern: $CMD = $VALUE + $SUFFIX
+      - pattern: $CMD = util.format($FMT, $VALUE, ...)
+      - pattern: $CMD = require("printf")($FMT, $VALUE, ...)
+      - pattern: $CMD = require('printf')($FMT, $VALUE, ...)
+      - pattern: $CMD = path.join($VALUE, ...)
+      - pattern: $ARGS.push($VALUE)
+    - focus-metavariable: $VALUE
+  pattern-propagators:
+  - pattern: $TO = $FROM
+    from: $FROM
+    to: $TO
+  - pattern: $TO = $FROM.$FIELD
+    from: $FROM
+    to: $TO
+  - pattern: $TO = $FROM[$KEY]
+    from: $FROM
+    to: $TO
+  - pattern: $TO = $FROM + $OTHER
+    from: $FROM
+    to: $TO
+  - pattern: $TO = $OTHER + $FROM
+    from: $FROM
+    to: $TO
+  - pattern: $TO = $FROM.$METHOD(...)
+    from: $FROM
+    to: $TO
+  - pattern: $TO = $METHOD($FROM, ...)
+    from: $FROM
+    to: $TO
+  - pattern: $TO.push($FROM)
+    from: $FROM
+    to: $TO
+  - pattern: $TO = [$FROM, ...]
+    from: $FROM
+    to: $TO
+  pattern-sanitizers:
+  - pattern-either:
+    - pattern: Number(...)
+    - pattern: isSafeName(...)
+    - pattern: isValidName(...)
+    - pattern: sanitizeShellString(...)
+    - pattern: yetAnohterSanitizer(...)
+    - pattern: cleanInput(...)
+    - pattern: |
+        $VALUE.replace(/'/g, "'\\''")
+    - pattern: |
+        $VALUE.replace(new RegExp("\\'", $FLAGS), "'\\''")
+  - patterns:
+    - pattern-either:
+      - pattern: |
+          if (!isValidName($VALUE)) {
+            return;
+          }
+      - pattern: |
+          if (!isSafeName($VALUE)) {
+            return;
+          }
+      - pattern: |
+          if (!$PATH.exist($VALUE)) {
+            ...
+            return;
+          }
+      - pattern: |
+          if (/[^A-Za-z0-9_\/:=-]/.test($VALUE)) {
+            ...
+          } else {
+            ...
+          }
+      - pattern: |
+          if (/^[A-Za-z0-9_\/:=-]$/.test($VALUE)) {
+            ...
+          }
+      - pattern: |
+          if (!/^([a-zA-Z0-9]+))?$/.test($VALUE)) {
+            ...
+            process.exit(...);
+          }
+      - pattern: |
+          if (!$FS.existsSync($PREFIX + $VALUE)) {
+            ...
+            return;
+          }
+      - pattern: |
+          if (typeof $VALUE === "undefined") {
+            ...
+          }
+      - pattern: |
+          if (typeof $VALUE === "number") {
+            ...
+          }
+      - pattern: |
+          if (isNaN(parseInt($VALUE))) {
+            ...
+          } else {
+            ...
+          }
+      - pattern: |
+          if (isNaN(+$VALUE)) {
+            ...
+          } else {
+            ...
+          }
+      - pattern: |
+          if (isNaN(parseInt($VALUE, 10))) {
+            ...
+          } else {
+            ...
+          }
+      - pattern: |
+          if (isNaN($VALUE - 0)) {
+            ...
+          } else {
+            ...
+          }
+      - pattern: |
+          if (isSafeName($VALUE)) {
+            ...
+          }
+      - pattern: |
+          if (isSafeName($VALUE) === true) {
+            ...
+          }
+      - pattern: |
+          if (isSafeName($VALUE) !== false) {
+            ...
+          }
+      - pattern: |
+          if (indirectThing($VALUE)) {
+            ...
+          }
+      - pattern: |
+          if (indirectThing2($VALUE)) {
+            ...
+          }
+      - pattern: |
+          if (moreIndirect($VALUE)) {
+            ...
+          }
+      - pattern: |
+          if (moreIndirect($VALUE) !== false) {
+            ...
+          }
+    - focus-metavariable: $VALUE
+    by-side-effect: true
+  - patterns:
+    - pattern: |
+        if (isNaN($VALUE)) {
+          ...
+        } else {
+          ...
+        }
+    - pattern-not: |
+        if (isNaN(parseInt(...))) {
+          ...
+        } else {
+          ...
+        }
+    - pattern-not: |
+        if (isNaN(+$OTHER)) {
+          ...
+        } else {
+          ...
+        }
+    - pattern-not: |
+        if (isNaN($OTHER - 0)) {
+          ...
+        } else {
+          ...
+        }
+    - pattern-not: |
+        if (isNaN($OTHER | 0)) {
+          ...
+        } else {
+          ...
+        }
+    - focus-metavariable: $VALUE
+    by-side-effect: true

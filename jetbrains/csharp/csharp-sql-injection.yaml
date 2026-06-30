@@ -1,0 +1,40 @@
+rules:
+  - id: csharp-codeql-sql-injection
+    languages: [ csharp ]
+    severity: ERROR
+    message: Tainted data reaches SQL command construction
+    mode: taint
+
+    pattern-sources:
+      - pattern-either:
+          - pattern: $BOX.Text
+          - pattern: Console.ReadLine()
+          - pattern: $COMMAND.ExecuteReader()
+          - pattern: new FileStream(...)
+          - patterns:
+              - pattern: public async Task<IActionResult> $METHOD([FromRoute] string $VALUE, ...) { ... }
+              - focus-metavariable: $VALUE
+
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: new SqlCommand($QUERY)
+              - pattern: new SqlCommand($QUERY, ...)
+              - pattern: new SqlDataAdapter($QUERY, ...)
+              - pattern: $DB.ExecuteSqlCommand($QUERY, ...)
+              - pattern: $DB.SqlQuery<$TYPE>($QUERY, ...)
+              - pattern: $CONNECTION.Query<$TYPE>($QUERY, ...)
+              - pattern: $CONNECTION.QueryAsync<$TYPE>($QUERY, ...)
+              - pattern: $CONNECTION.QueryFirstAsync($QUERY, ...)
+              - pattern: $CONNECTION.ExecuteAsync($QUERY, ...)
+              - pattern: $CONNECTION.ExecuteScalar($QUERY, ...)
+              - pattern: $CONNECTION.ExecuteReader($QUERY, ...)
+              - pattern: new SQLiteCommand($QUERY)
+              - pattern: new SQLiteCommand($QUERY, ...)
+              - pattern: new SQLiteDataAdapter($QUERY, ...)
+          - focus-metavariable: $QUERY
+      - patterns:
+          - pattern-either:
+              - pattern: new SqlDataAdapter($COMMAND)
+              - pattern: new SQLiteDataAdapter($COMMAND)
+          - focus-metavariable: $COMMAND
