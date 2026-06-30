@@ -16,9 +16,9 @@ drawn from several well-known open-source SAST projects:
 
 | Upstream project | Upstream license | Path in this repo |
 | --- | --- | --- |
-| [GitLab SAST rules](https://gitlab.com/gitlab-org/security-products/sast-rules) (MIT-licensed top-level content, © GitLab Inc.) | MIT (Expat) | `c/`, `csharp/`, `go/`, `java/`, `javascript/`, `python/`, `scala/` |
+| [GitLab SAST rules](https://gitlab.com/gitlab-org/security-products/sast-rules) (MIT-licensed top-level content, © GitLab Inc.) | MIT (Expat) | `c/`, `csharp/`, `go/`, `javascript/`, `python/`, `scala/` |
 | [Find Security Bugs](https://find-sec-bugs.github.io/) | LGPL v3 | `rules/lgpl/kotlin/**` |
-| [MobSF / mobsfscan](https://github.com/MobSF/mobsfscan) | LGPL v3 | `rules/lgpl/oc/**`, `rules/lgpl/swift/**`, `rules/lgpl/java/webview/**`, `rules/lgpl/kotlin/webview/**` |
+| [MobSF / mobsfscan](https://github.com/MobSF/mobsfscan) | LGPL v3 | `rules/lgpl/oc/**`, `rules/lgpl/swift/**` |
 | [njsscan](https://github.com/ajinabraham/njsscan) | LGPL v3 | `rules/lgpl/javascript/**` |
 
 Per-file attribution (original upstream URL and license) is preserved in the
@@ -38,21 +38,19 @@ header comments of every `.yml` rule file under `rules/lgpl/`, e.g.:
 ├── LICENSE                    # MIT — applies to top-level rule directories
 ├── README.md
 ├── c/           csharp/       # MIT rules (+ paired test cases)
-├── go/          java/
+├── go/          
 ├── javascript/  python/
 ├── scala/
 └── rules/
     └── lgpl/                  # LGPL v3 rules (+ paired test cases)
         ├── LICENSE            # full LGPL v3 text
-        ├── java/
         ├── javascript/
-        ├── kotlin/
         ├── oc/
         └── swift/
 ```
 
 Each rule file `rule-<name>.yml` is paired with a test-case file
-`rule-<name>.<ext>` in the same directory (`.c`, `.py`, `.java`, `.kt`,
+`rule-<name>.<ext>` in the same directory (`.c`, `.py`,
 `.js`, `.scala`, `.cs`, `.go`, `.m`, `.swift`).
 
 ## License summary
