@@ -1,5 +1,13 @@
 rules:
-  - id: client-side-request-forgery
+  - id: javascript-client-side-request-forgery
+    metadata:
+      category: security
+      cwe:
+        - "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp:
+        - "A5:2017 - Broken Access Control"
+        - "A10:2021 - Server-Side Request Forgery"
+        - "A01:2025 - Broken Access Control"
     message: User-controlled URL reaches an outgoing request sink.
     languages:
       - javascript

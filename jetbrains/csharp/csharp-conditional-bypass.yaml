@@ -1,25 +1,50 @@
 rules:
-  - id: csharp-codeql-conditional-bypass
+  - id: csharp-conditional-bypass
+    metadata:
+      category: security
+      cwe:
+        - "CWE-807: Reliance on Untrusted Inputs in a Security Decision"
+      owasp:
+        - "A04:2021 - Insecure Design"
+        - "A06:2025 - Insecure Design"
     languages: [ csharp ]
     severity: ERROR
-    message: User-controlled condition guards a sensitive action
+    message: >-
+      User-controlled input used in a condition guard for a sensitive action might lead to a security guard bypass
     mode: taint
 
     pattern-sources:
-      - pattern-either:
-          - pattern: $CTX.Request.QueryString[$KEY]
-          - pattern: $CTX.Request.Cookies[$KEY]
-          - pattern: Dns.GetHostByAddress(...)
+      - patterns:
+          - pattern-either:
+              - pattern: $CTX.Request.QueryString[$KEY]
+              - pattern: $CTX.Request.Cookies[$KEY]
+          - metavariable-type:
+              metavariable: $CTX
+              type: HttpContext
+      - pattern: Dns.GetHostByAddress(...)
 
     pattern-sinks:
       - patterns:
           - pattern-either:
-              - pattern: $VALUE == "false"
-              - pattern: if ($VALUE == "false") $ACTION;
-              - pattern: if ($VALUE == "false") { ... }
-              - pattern: if ($VALUE.Equals("false")) ...
-              - pattern: $VALUE == "trustme.com"
-              - pattern: if ($VALUE == "trustme.com") $ACTION;
-              - pattern: if ($VALUE == "trustme.com") { ... }
-              - pattern: if ($VALUE.EndsWith("trustme.com")) ...
+              - pattern: |
+                  if ($VALUE == "...") {
+                    ...
+                    $METHOD(...);
+                    ...
+                  }
+              - pattern: |
+                  if ($VALUE.$CHECK(...)) {
+                    ...
+                    $METHOD(...);
+                    ...
+                  }
+              - pattern: |
+                  if ($VALUE == "...")
+                    $METHOD(...);
+              - pattern: |
+                  if ($VALUE.$CHECK(...))
+                    $METHOD(...);
+          - metavariable-regex:
+              metavariable: $METHOD
+              regex: '(?i).*(login|auth|security).*'
           - focus-metavariable: $VALUE

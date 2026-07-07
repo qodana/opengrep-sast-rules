@@ -1,91 +1,101 @@
 rules:
-- id: benchmark-second-order-command-injection
-  message: User-controlled git or hg argument can trigger command execution through options.
-  languages:
-  - javascript
-  - typescript
-  severity: ERROR
-  mode: taint
-  pattern-sources:
-  - pattern-either:
-    - pattern: $REQ.query
-    - pattern: $REQ.query.$PARAM
-    - pattern: $REQ.body
-    - pattern: $REQ.body.$PARAM
-    - pattern: $REQ.params
-    - pattern: $REQ.params.$PARAM
-  pattern-sinks:
-  - patterns:
-    - pattern-either:
+  - id: javascript-second-order-command-injection
+    metadata:
+      category: security
+      cwe:
+        - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
+      owasp:
+        - "A01:2017 - Injection"
+        - "A03:2021 - Injection"
+        - "A05:2025 - Injection"
+    message: User-controlled git or hg argument can trigger command execution through options.
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR
+    mode: taint
+
+    pattern-sources:
+      - pattern-either:
+          - pattern: $REQ.query
+          - pattern: $REQ.query.$PARAM
+          - pattern: $REQ.body
+          - pattern: $REQ.body.$PARAM
+          - pattern: $REQ.params
+          - pattern: $REQ.params.$PARAM
+
+    pattern-sinks:
       - patterns:
-        - pattern-either:
-          - pattern: execFile("git", ["ls-remote", $ARG, ...], ...)
-          - pattern: execFile('git', ['ls-remote', $ARG, ...], ...)
-          - pattern: $CP.execFile("git", ["ls-remote", $ARG, ...], ...)
-          - pattern: $CP.execFile('git', ['ls-remote', $ARG, ...], ...)
-          - pattern: indirect("git", ["ls-remote", $ARG, ...], ...)
-          - pattern: indirect('git', ['ls-remote', $ARG, ...], ...)
-        - pattern-not-inside: |
-            if ($ARG.startsWith("--")) {
-              ...
-            } else {
-              ...
-            }
-        - pattern-not-inside: |
-            if ($ARG.startsWith("git@")) {
-              ...
-            }
-        - focus-metavariable: $ARG
-      - patterns:
-        - pattern-either:
-          - pattern: execFile("git", ["fetch", $ARG, ...], ...)
-          - pattern: execFile('git', ['fetch', $ARG, ...], ...)
-          - pattern: $CP.execFile("git", ["fetch", $ARG, ...], ...)
-          - pattern: $CP.execFile('git', ['fetch', $ARG, ...], ...)
-        - focus-metavariable: $ARG
-      - patterns:
-        - pattern-either:
-          - pattern: execFile("git", $ARGS, ...)
-          - pattern: execFile('git', $ARGS, ...)
-          - pattern: $CP.execFile("git", $ARGS, ...)
-          - pattern: $CP.execFile('git', $ARGS, ...)
-        - pattern-not: execFile("git", [...], ...)
-        - pattern-not: execFile('git', [...], ...)
-        - pattern-not: $CP.execFile("git", [...], ...)
-        - pattern-not: $CP.execFile('git', [...], ...)
-        - pattern-not: execFile("git", $BASE.concat(...), ...)
-        - pattern-not: execFile('git', $BASE.concat(...), ...)
-        - pattern-not: $CP.execFile("git", $BASE.concat(...), ...)
-        - pattern-not: $CP.execFile('git', $BASE.concat(...), ...)
-        - pattern-not: $BASE.concat(...)
-        - focus-metavariable: $ARGS
-      - patterns:
-        - pattern-either:
-          - pattern: execFile("hg", ["clone", $ARG, ...], ...)
-          - pattern: execFile('hg', ['clone', $ARG, ...], ...)
-          - pattern: $CP.execFile("hg", ["clone", $ARG, ...], ...)
-          - pattern: $CP.execFile('hg', ['clone', $ARG, ...], ...)
-        - pattern-not: execFile("hg", ["clone", "--", ...], ...)
-        - pattern-not: execFile('hg', ['clone', '--', ...], ...)
-        - pattern-not: $CP.execFile("hg", ["clone", "--", ...], ...)
-        - pattern-not: $CP.execFile('hg', ['clone', '--', ...], ...)
-        - focus-metavariable: $ARG
-      - patterns:
-        - pattern-either:
-          - pattern: execFile("hg", ["whatever", $ARG, ...], ...)
-          - pattern: execFile('hg', ['whatever', $ARG, ...], ...)
-          - pattern: $CP.execFile("hg", ["whatever", $ARG, ...], ...)
-          - pattern: $CP.execFile('hg', ['whatever', $ARG, ...], ...)
-        - focus-metavariable: $ARG
-      - patterns:
-        - pattern-either:
-          - pattern: execFile("hg", $ARGS, ...)
-          - pattern: execFile('hg', $ARGS, ...)
-          - pattern: $CP.execFile("hg", $ARGS, ...)
-          - pattern: $CP.execFile('hg', $ARGS, ...)
-        - pattern-not: execFile("hg", [...], ...)
-        - pattern-not: execFile('hg', [...], ...)
-        - pattern-not: $CP.execFile("hg", [...], ...)
-        - pattern-not: $CP.execFile('hg', [...], ...)
-        - pattern-not: $BASE.concat(...)
-        - focus-metavariable: $ARGS
+          - pattern-either:
+              - patterns:
+                  - pattern-either:
+                      - pattern: execFile("git", ["ls-remote", $ARG, ...], ...)
+                      - pattern: execFile('git', ['ls-remote', $ARG, ...], ...)
+                      - pattern: $CP.execFile("git", ["ls-remote", $ARG, ...], ...)
+                      - pattern: $CP.execFile('git', ['ls-remote', $ARG, ...], ...)
+                      - pattern: indirect("git", ["ls-remote", $ARG, ...], ...)
+                      - pattern: indirect('git', ['ls-remote', $ARG, ...], ...)
+                  - pattern-not-inside: |
+                      if ($ARG.startsWith("--")) {
+                        ...
+                      } else {
+                        ...
+                      }
+                  - pattern-not-inside: |
+                      if ($ARG.startsWith("git@")) {
+                        ...
+                      }
+                  - focus-metavariable: $ARG
+              - patterns:
+                  - pattern-either:
+                      - pattern: execFile("git", ["fetch", $ARG, ...], ...)
+                      - pattern: execFile('git', ['fetch', $ARG, ...], ...)
+                      - pattern: $CP.execFile("git", ["fetch", $ARG, ...], ...)
+                      - pattern: $CP.execFile('git', ['fetch', $ARG, ...], ...)
+                  - focus-metavariable: $ARG
+              - patterns:
+                  - pattern-either:
+                      - pattern: execFile("git", $ARGS, ...)
+                      - pattern: execFile('git', $ARGS, ...)
+                      - pattern: $CP.execFile("git", $ARGS, ...)
+                      - pattern: $CP.execFile('git', $ARGS, ...)
+                  - pattern-not: execFile("git", [...], ...)
+                  - pattern-not: execFile('git', [...], ...)
+                  - pattern-not: $CP.execFile("git", [...], ...)
+                  - pattern-not: $CP.execFile('git', [...], ...)
+                  - pattern-not: execFile("git", $BASE.concat(...), ...)
+                  - pattern-not: execFile('git', $BASE.concat(...), ...)
+                  - pattern-not: $CP.execFile("git", $BASE.concat(...), ...)
+                  - pattern-not: $CP.execFile('git', $BASE.concat(...), ...)
+                  - pattern-not: $BASE.concat(...)
+                  - focus-metavariable: $ARGS
+              - patterns:
+                  - pattern-either:
+                      - pattern: execFile("hg", ["clone", $ARG, ...], ...)
+                      - pattern: execFile('hg', ['clone', $ARG, ...], ...)
+                      - pattern: $CP.execFile("hg", ["clone", $ARG, ...], ...)
+                      - pattern: $CP.execFile('hg', ['clone', $ARG, ...], ...)
+                  - pattern-not: execFile("hg", ["clone", "--", ...], ...)
+                  - pattern-not: execFile('hg', ['clone', '--', ...], ...)
+                  - pattern-not: $CP.execFile("hg", ["clone", "--", ...], ...)
+                  - pattern-not: $CP.execFile('hg', ['clone', '--', ...], ...)
+                  - focus-metavariable: $ARG
+              - patterns:
+                  - pattern-either:
+                      - pattern: execFile("hg", ["whatever", $ARG, ...], ...)
+                      - pattern: execFile('hg', ['whatever', $ARG, ...], ...)
+                      - pattern: $CP.execFile("hg", ["whatever", $ARG, ...], ...)
+                      - pattern: $CP.execFile('hg', ['whatever', $ARG, ...], ...)
+                  - focus-metavariable: $ARG
+              - patterns:
+                  - pattern-either:
+                      - pattern: execFile("hg", $ARGS, ...)
+                      - pattern: execFile('hg', $ARGS, ...)
+                      - pattern: $CP.execFile("hg", $ARGS, ...)
+                      - pattern: $CP.execFile('hg', $ARGS, ...)
+                  - pattern-not: execFile("hg", [...], ...)
+                  - pattern-not: execFile('hg', [...], ...)
+                  - pattern-not: $CP.execFile("hg", [...], ...)
+                  - pattern-not: $CP.execFile('hg', [...], ...)
+                  - pattern-not: $BASE.concat(...)
+                  - focus-metavariable: $ARGS

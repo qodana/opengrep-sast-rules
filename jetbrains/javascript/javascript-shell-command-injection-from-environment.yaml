@@ -1,5 +1,13 @@
 rules:
-  - id: javascript-codeql-shell-command-injection-from-environment
+  - id: javascript-shell-command-injection-from-environment
+    metadata:
+      category: security
+      cwe:
+        - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
+      owasp:
+        - "A01:2017 - Injection"
+        - "A03:2021 - Injection"
+        - "A05:2025 - Injection"
     languages:
       - javascript
       - typescript

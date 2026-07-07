@@ -1,37 +1,48 @@
 rules:
-- id: benchmark-stored-xss
-  message: Stored data is written to an HTML response.
-  languages:
-  - javascript
-  - typescript
-  severity: ERROR
-  mode: taint
-  pattern-sources:
-  - patterns:
-    - pattern-either:
-      - pattern: $FS.readdir($DIR, function ($ERR, $FILES) { ... })
-      - pattern: $FS.readdir($DIR, ($ERR, $FILES) => { ... })
-    - focus-metavariable: $FILES
-  - pattern-either:
-    - pattern: $TORRENT.name
-    - pattern: parseTorrent(...).name
-  pattern-sinks:
-  - patterns:
-    - pattern-either:
-      - pattern: $RES.send($VALUE, ...)
-      - pattern: $RES.write($VALUE, ...)
-      - pattern: $RES.end($VALUE, ...)
-    - focus-metavariable: $VALUE
-  pattern-propagators:
-  - pattern: $FROM.forEach(function ($ITEM) { ... $TO.push($ITEM); ... })
-    from: $FROM
-    to: $TO
-  - pattern: $FROM.forEach(function ($ITEM) { ... })
-    from: $FROM
-    to: $ITEM
-  - pattern: $TO.push($FROM)
-    from: $FROM
-    to: $TO
-  - pattern: $TO = format($FROM)
-    from: $FROM
-    to: $TO
+  - id: javascript-stored-xss
+    metadata:
+      category: security
+      cwe:
+        - "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp:
+        - "A07:2017 - Cross-Site Scripting (XSS)"
+        - "A03:2021 - Injection"
+        - "A05:2025 - Injection"
+    message: Stored data is written to an HTML response.
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR
+    mode: taint
+
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $FS.readdir($DIR, function ($ERR, $FILES) { ... })
+              - pattern: $FS.readdir($DIR, ($ERR, $FILES) => { ... })
+          - focus-metavariable: $FILES
+      - pattern-either:
+          - pattern: $TORRENT.name
+          - pattern: parseTorrent(...).name
+
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $RES.send($VALUE, ...)
+              - pattern: $RES.write($VALUE, ...)
+              - pattern: $RES.end($VALUE, ...)
+          - focus-metavariable: $VALUE
+
+    pattern-propagators:
+      - pattern: $FROM.forEach(function ($ITEM) { ... $TO.push($ITEM); ... })
+        from: $FROM
+        to: $TO
+      - pattern: $FROM.forEach(function ($ITEM) { ... })
+        from: $FROM
+        to: $ITEM
+      - pattern: $TO.push($FROM)
+        from: $FROM
+        to: $TO
+      - pattern: $TO = format($FROM)
+        from: $FROM
+        to: $TO

@@ -1,5 +1,13 @@
 rules:
-  - id: javascript-codeql-zip-slip
+  - id: javascript-zip-slip
+    metadata:
+      category: security
+      cwe:
+        - "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp:
+        - "A05:2017 - Broken Access Control"
+        - "A01:2021 - Broken Access Control"
+        - "A01:2025 - Broken Access Control"
     languages:
       - javascript
       - typescript

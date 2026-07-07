@@ -1,28 +1,39 @@
 rules:
-- id: benchmark-unsafe-dynamic-method-access
-  message: Browser message data reaches a dynamic method lookup.
-  languages:
-  - javascript
-  - typescript
-  severity: ERROR
-  mode: taint
-  pattern-sources:
-  - patterns:
-    - pattern-either:
-      - pattern: window.addEventListener('message', ($EVENT) => { ... })
-      - pattern: window.addEventListener("message", ($EVENT) => { ... })
-      - pattern: window.addEventListener('message', function ($EVENT) { ... })
-      - pattern: window.addEventListener("message", function ($EVENT) { ... })
-    - focus-metavariable: $EVENT
-  pattern-sinks:
-  - patterns:
-    - pattern: $METHOD
-    - pattern-either:
-      - pattern-inside: window[$METHOD](...)
-      - pattern-inside: new window[$METHOD](...)
-      - pattern-inside: f[$METHOD](...)()
-    - focus-metavariable: $METHOD
-  pattern-propagators:
-  - pattern: $TO = JSON.parse($FROM.data)
-    from: $FROM
-    to: $TO
+  - id: javascript-unsafe-dynamic-method-access
+    metadata:
+      category: security
+      cwe:
+        - "CWE-94: Improper Control of Generation of Code ('Code Injection')"
+      owasp:
+        - "A01:2017 - Injection"
+        - "A03:2021 - Injection"
+        - "A05:2025 - Injection"
+    message: Browser message data reaches a dynamic method lookup.
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR
+    mode: taint
+
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: window.addEventListener('message', ($EVENT) => { ... })
+              - pattern: window.addEventListener("message", ($EVENT) => { ... })
+              - pattern: window.addEventListener('message', function ($EVENT) { ... })
+              - pattern: window.addEventListener("message", function ($EVENT) { ... })
+          - focus-metavariable: $EVENT
+
+    pattern-sinks:
+      - patterns:
+          - pattern: $METHOD
+          - pattern-either:
+              - pattern-inside: window[$METHOD](...)
+              - pattern-inside: new window[$METHOD](...)
+              - pattern-inside: f[$METHOD](...)()
+          - focus-metavariable: $METHOD
+
+    pattern-propagators:
+      - pattern: $TO = JSON.parse($FROM.data)
+        from: $FROM
+        to: $TO

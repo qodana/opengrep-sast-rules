@@ -1,22 +1,79 @@
 rules:
-  - id: csharp-codeql-zip-slip
+  - id: csharp-zip-slip
+    metadata:
+      category: security
+      cwe:
+        - "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp:
+        - "A05:2017 - Broken Access Control"
+        - "A01:2021 - Broken Access Control"
+        - "A01:2025 - Broken Access Control"
     languages: [ csharp ]
     severity: ERROR
-    message: Archive entry path reaches a filesystem write
+    message: >-
+      Entry path from an archive reaches a filesystem write API, leading to a ZipSlip vulnerability
     mode: taint
 
     pattern-sources:
-      - pattern: $ENTRY.FullName
+      - patterns:
+          - pattern: $ENTRY.FullName
+          - pattern-inside: |
+              foreach ($E in $ARCHIVE.Entries) {
+                ...
+              }
+          - metavariable-type:
+              metavariable: $ARCHIVE
+              type: ZipArchive
+      - patterns:
+          - pattern: $ENTRY.$FIELD
+          - metavariable-type:
+              metavariable: $ENTRY
+              type: ZipArchiveEntry
 
     pattern-sanitizers:
-      - pattern: Path.GetFileName(...)
+      - pattern: Path.GetFileName($PATH)
+      - pattern: Path.GetFileNameWithoutExtension($PATH)
+      - pattern: $PATH.Substring($PATH.LastIndexOf("\\") + 1)
+      - pattern: $PATH.Substring($PATH.LastIndexOf("/") + 1)
       - pattern: $PATH.Substring($PATH.LastIndexOf("\\"))
+      - pattern: $PATH.Substring($PATH.LastIndexOf("/"))
+      - patterns:
+          - pattern-either:
+              - pattern: |
+                  if (!$PATH.StartsWith(...)) {
+                    throw ...;
+                  }
+              - pattern: |
+                  if (!$PATH.StartsWith(...))
+                    throw ...;
+              - pattern: |
+                  if (!$PATH.StartsWith(...)) {
+                    return ...;
+                  }
+              - pattern: |
+                  if (!$PATH.StartsWith(...))
+                    return ...;
+          - focus-metavariable: $PATH
+        by-side-effect: true
 
     pattern-sinks:
       - patterns:
           - pattern-either:
-              - pattern: $ENTRY.ExtractToFile($PATH, ...)
-              - pattern: new FileStream($PATH, ...)
+              - patterns:
+                  - pattern: $ENTRY.ExtractToFile($PATH, ...)
+                  - pattern-inside: |
+                      foreach ($E in $ARCHIVE.Entries) {
+                        ...
+                      }
+                  - metavariable-type:
+                      metavariable: $ARCHIVE
+                      type: ZipArchive
+              - patterns:
+                  - pattern: $ENTRY.ExtractToFile($PATH, ...)
+                  - metavariable-type:
+                      metavariable: $ENTRY
+                      type: ZipArchiveEntry
               - pattern: File.Create($PATH)
               - pattern: new FileInfo($PATH)
+              - pattern: new FileStream($PATH, ...)
           - focus-metavariable: $PATH

@@ -1,40 +1,60 @@
 rules:
-  - id: csharp-codeql-sql-injection
+  - id: csharp-sql-injection
+    metadata:
+      category: security
+      cwe:
+        - "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+      owasp:
+        - "A01:2017 - Injection"
+        - "A03:2021 - Injection"
+        - "A05:2025 - Injection"
     languages: [ csharp ]
     severity: ERROR
-    message: Tainted data reaches SQL command construction
+    message: >-
+      User-controlled input reaches SQL command construction, resulting in a SQL injection vulnerability
     mode: taint
 
     pattern-sources:
       - pattern-either:
-          - pattern: $BOX.Text
+          - patterns:
+              - pattern: $BOX.Text
+              - metavariable-type:
+                  metavariable: $BOX
+                  types:
+                    - TextBox
+                    - System.Windows.Forms.TextBox
+          - patterns:
+              - pattern: $CMD.ExecuteReader()
+              - pattern-either:
+                  - pattern-inside: |
+                      SqlCommand $CMD = new SqlCommand(...);
+                      ...
+                  - pattern-inside: |
+                      var $CMD = new SqlCommand(...);
+                      ...
           - pattern: Console.ReadLine()
-          - pattern: $COMMAND.ExecuteReader()
           - pattern: new FileStream(...)
           - patterns:
-              - pattern: public async Task<IActionResult> $METHOD([FromRoute] string $VALUE, ...) { ... }
+              - pattern: $E<$T> $METHOD([FromRoute] string $VALUE, ...) { ... }
               - focus-metavariable: $VALUE
 
     pattern-sinks:
       - patterns:
           - pattern-either:
+              - pattern: $DB.SqlQuery<$TYPE>($QUERY, ...)
+              - pattern: $DB.Query<$TYPE>($QUERY, ...)
+              - pattern: $DB.QueryAsync<$TYPE>($QUERY, ...)
+              - pattern: $DB.QueryFirstAsync($QUERY, ...)
+              - pattern: $DB.ExecuteAsync($QUERY, ...)
+              - pattern: $DB.ExecuteScalar($QUERY, ...)
+              - pattern: $DB.ExecuteReader($QUERY, ...)
+              - pattern: $DB.ExecuteSqlCommand($QUERY, ...)
               - pattern: new SqlCommand($QUERY)
               - pattern: new SqlCommand($QUERY, ...)
+              - pattern: new SqlDataAdapter($QUERY)
               - pattern: new SqlDataAdapter($QUERY, ...)
-              - pattern: $DB.ExecuteSqlCommand($QUERY, ...)
-              - pattern: $DB.SqlQuery<$TYPE>($QUERY, ...)
-              - pattern: $CONNECTION.Query<$TYPE>($QUERY, ...)
-              - pattern: $CONNECTION.QueryAsync<$TYPE>($QUERY, ...)
-              - pattern: $CONNECTION.QueryFirstAsync($QUERY, ...)
-              - pattern: $CONNECTION.ExecuteAsync($QUERY, ...)
-              - pattern: $CONNECTION.ExecuteScalar($QUERY, ...)
-              - pattern: $CONNECTION.ExecuteReader($QUERY, ...)
               - pattern: new SQLiteCommand($QUERY)
               - pattern: new SQLiteCommand($QUERY, ...)
+              - pattern: new SQLiteDataAdapter($QUERY)
               - pattern: new SQLiteDataAdapter($QUERY, ...)
           - focus-metavariable: $QUERY
-      - patterns:
-          - pattern-either:
-              - pattern: new SqlDataAdapter($COMMAND)
-              - pattern: new SQLiteDataAdapter($COMMAND)
-          - focus-metavariable: $COMMAND

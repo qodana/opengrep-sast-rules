@@ -1,0 +1,73 @@
+rules:
+  - id: csharp-reflected-xss-asp
+    metadata:
+      category: security
+      cwe:
+        - "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp:
+        - "A07:2017 - Cross-Site Scripting (XSS)"
+        - "A03:2021 - Injection"
+        - "A05:2025 - Injection"
+    languages: [ csharp ]
+    severity: ERROR
+    message: >-
+      User-controlled input reaches the HTML output context, resulting in a reflected XSS vulnerability
+    mode: taint
+
+    pattern-sources:
+      - pattern-either:
+          - patterns:
+              - pattern: $BOX.Text
+              - metavariable-type:
+                  metavariable: $BOX
+                  type: TextBox
+          - patterns:
+              - pattern-either:
+                  - pattern: $CTX.Request[$KEY]
+                  - pattern: $CTX.Request.QueryString[$KEY]
+                  - pattern: $CTX.Request.Unvalidated.QueryString[$KEY]
+              - metavariable-type:
+                  metavariable: $CTX
+                  types:
+                    - HttpContext
+                    - HttpContextBase
+          - pattern: $REQ.RawUrl
+
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: new HtmlString($VALUE)
+              - pattern: new MvcHtmlString($VALUE)
+              - pattern: new StringContent($VALUE)
+              - patterns:
+                  - pattern: $CTX.Response.Write($VALUE)
+                  - metavariable-type:
+                      metavariable: $CTX
+                      types:
+                        - HttpContext
+                        - HttpContextBase
+              - patterns:
+                  - pattern: $HTML.Raw($VALUE)
+                  - metavariable-type:
+                      metavariable: $HTML
+                      type: HtmlHelper
+              - patterns:
+                  - pattern: $TYPE.$FIELD = $VALUE
+                  - metavariable-type:
+                      metavariable: $TYPE
+                      types:
+                        - Calendar
+                        - Table
+                        - Label
+          - focus-metavariable: $VALUE
+
+    pattern-propagators:
+      - pattern: $SB.AppendFormat($FORMAT, $VALUE)
+        from: $VALUE
+        to: $SB
+
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: $ENCODER.HtmlEncode(...)
+          - pattern: $ENCODER.UrlEncode(...)
+          - pattern: int.Parse(...)

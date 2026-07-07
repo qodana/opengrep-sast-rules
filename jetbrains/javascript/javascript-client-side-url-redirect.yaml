@@ -1,79 +1,89 @@
 rules:
-- id: benchmark-client-side-url-redirect
-  message: Browser-controlled URL data reaches a navigation sink.
-  languages:
-  - javascript
-  - typescript
-  severity: ERROR
-  mode: taint
-  pattern-sources:
-  - pattern-either:
-    - pattern: window.name
-    - pattern: window.location
-    - pattern: window.location.href
-    - pattern: location.href
-    - pattern: location.search
-    - pattern: location.hash
-    - pattern: document.location
-    - pattern: document.location.href
-    - pattern: document.location.search
-    - pattern: document.location.hash
-    - pattern: $LOCATION.search(...)
-    - pattern: $HISTORY.location.hash
-  - patterns:
-    - pattern-either:
-      - pattern: self.onmessage = function ($EVENT) { ... }
-      - pattern: window.onmessage = function ($EVENT) { ... }
-      - pattern: self.onmessage = ($EVENT) => { ... }
-      - pattern: window.onmessage = ($EVENT) => { ... }
-    - focus-metavariable: $EVENT
-  pattern-sinks:
-  - patterns:
-    - pattern-either:
-      - pattern: window.location = $URL
-      - pattern: document.location = $URL
-      - pattern: location.href = $URL
-      - pattern: window.location.href = $URL
-      - pattern: $EL.href = $URL
-      - pattern: $EL.src = $URL
-      - pattern: $EL.action = $URL
-      - pattern: $EL.formaction = $URL
-      - pattern: $EL.data = $URL
-      - pattern: window.open($URL, ...)
-      - pattern: location.assign($URL, ...)
-      - pattern: location.replace($URL, ...)
-      - pattern: $ROUTER.push($URL, ...)
-      - pattern: $HISTORY.push($URL, ...)
-      - pattern: $HISTORY.replace($URL, ...)
-      - pattern: $LOCATION.url($URL, ...)
-      - pattern: importScripts($URL, ...)
-      - pattern: self.importScripts($URL, ...)
-      - pattern: $(...).attr("href", $URL, ...)
-      - pattern: $(...).attr('href', $URL, ...)
-    - focus-metavariable: $URL
+  - id: javascript-client-side-url-redirect
+    metadata:
+      category: security
+      cwe:
+        - "CWE-601: URL Redirection to Untrusted Site ('Open Redirect')"
+      owasp:
+        - "A05:2017 - Broken Access Control"
+        - "A01:2021 - Broken Access Control"
+        - "A01:2025 - Broken Access Control"
+    message: Browser-controlled URL data reaches a navigation sink.
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR
+    mode: taint
 
-  pattern-sanitizers:
-  - patterns:
-    - pattern-either:
-      - pattern: |
-          if ($URL.startsWith('https://example.com/')) {
-            ...
-          }
-      - pattern: |
-          if ($URL.startsWith('https://example.com//')) {
-            ...
-          }
-      - pattern: |
-          if ($URL.startsWith('https://example.com/foo')) {
-            ...
-          }
-      - pattern: |
-          if ($URL.startsWith('//example.com/')) {
-            ...
-          }
-      - pattern: |
-          if ($URL.startsWith('https://example.com/' + ...)) {
-            ...
-          }
-    - focus-metavariable: $URL
-    by-side-effect: true
+    pattern-sources:
+      - pattern-either:
+          - pattern: window.name
+          - pattern: window.location
+          - pattern: window.location.href
+          - pattern: location.href
+          - pattern: location.search
+          - pattern: location.hash
+          - pattern: document.location
+          - pattern: document.location.href
+          - pattern: document.location.search
+          - pattern: document.location.hash
+          - pattern: $LOCATION.search(...)
+          - pattern: $HISTORY.location.hash
+      - patterns:
+          - pattern-either:
+              - pattern: self.onmessage = function ($EVENT) { ... }
+              - pattern: window.onmessage = function ($EVENT) { ... }
+              - pattern: self.onmessage = ($EVENT) => { ... }
+              - pattern: window.onmessage = ($EVENT) => { ... }
+          - focus-metavariable: $EVENT
+
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: window.location = $URL
+              - pattern: document.location = $URL
+              - pattern: location.href = $URL
+              - pattern: window.location.href = $URL
+              - pattern: $EL.href = $URL
+              - pattern: $EL.src = $URL
+              - pattern: $EL.action = $URL
+              - pattern: $EL.formaction = $URL
+              - pattern: $EL.data = $URL
+              - pattern: window.open($URL, ...)
+              - pattern: location.assign($URL, ...)
+              - pattern: location.replace($URL, ...)
+              - pattern: $ROUTER.push($URL, ...)
+              - pattern: $HISTORY.push($URL, ...)
+              - pattern: $HISTORY.replace($URL, ...)
+              - pattern: $LOCATION.url($URL, ...)
+              - pattern: importScripts($URL, ...)
+              - pattern: self.importScripts($URL, ...)
+              - pattern: $(...).attr("href", $URL, ...)
+              - pattern: $(...).attr('href', $URL, ...)
+          - focus-metavariable: $URL
+
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: |
+                  if ($URL.startsWith('https://example.com/')) {
+                    ...
+                  }
+              - pattern: |
+                  if ($URL.startsWith('https://example.com//')) {
+                    ...
+                  }
+              - pattern: |
+                  if ($URL.startsWith('https://example.com/foo')) {
+                    ...
+                  }
+              - pattern: |
+                  if ($URL.startsWith('//example.com/')) {
+                    ...
+                  }
+              - pattern: |
+                  if ($URL.startsWith('https://example.com/' + ...)) {
+                    ...
+                  }
+          - focus-metavariable: $URL
+        by-side-effect: true

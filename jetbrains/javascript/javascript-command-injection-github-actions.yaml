@@ -1,170 +1,173 @@
 rules:
-- id: command-injection-from-github-actions
-  message: >-
-    Detected GitHub Actions context data flowing into a command execution function.
-    GitHub Actions context can contain attacker-controlled data such as issue titles,
-    PR descriptions, branch names, etc. This could lead to a command injection vulnerability.
-    Validate and sanitize all GitHub Actions context data before using it in commands.
-  metadata:
-    cwe:
-    - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
-    owasp:
-    - A01:2017 - Injection
-    - A03:2021 - Injection
-    category: security
-    technology:
-    - javascript
-    - nodejs
-    - github-actions
-    references:
-    - https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions
-    - https://owasp.org/www-community/attacks/Command_Injection
-    cwe2022-top25: true
-    cwe2021-top25: true
-    subcategory:
-    - vuln
-    likelihood: HIGH
-    impact: HIGH
-    confidence: HIGH
-  languages:
-  - javascript
-  - typescript
-  severity: ERROR
-  mode: taint
-  pattern-sources:
-  - patterns:
-    - pattern-either:
-      # GitHub context payload
-      - pattern: $GITHUB.context.payload.pull_request.title
-      - pattern: $GITHUB.context.payload.pull_request.body
-      - pattern: $GITHUB.context.payload.pull_request.head.ref
-      - pattern: $GITHUB.context.payload.pull_request.head.label
-      - pattern: $GITHUB.context.payload.pull_request.head.sha
-      - pattern: $GITHUB.context.payload.issue.title
-      - pattern: $GITHUB.context.payload.issue.body
-      - pattern: $GITHUB.context.payload.comment.body
-      - pattern: $GITHUB.context.payload.$PROP
-    - pattern-either:
-      - pattern-inside: |
-          const $GITHUB = require('@actions/github')
-          ...
-      - pattern-inside: |
-          import $GITHUB from '@actions/github'
-          ...
-      - pattern-inside: |
-          import * as $GITHUB from '@actions/github'
-          ...
-  pattern-sinks:
-  - patterns:
-    - pattern-either:
-      # child_process sinks - only first argument (no options object)
+  - id: javascript-command-injection-from-github-actions
+    message: >-
+      Detected GitHub Actions context data flowing into a command execution function.
+      GitHub Actions context can contain attacker-controlled data such as issue titles,
+      PR descriptions, branch names, etc. This could lead to a command injection vulnerability.
+      Validate and sanitize all GitHub Actions context data before using it in commands.
+    metadata:
+      cwe:
+        - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
+      owasp:
+        - "A01:2017 - Injection"
+        - "A03:2021 - Injection"
+        - "A05:2025 - Injection"
+      category: security
+      technology:
+        - javascript
+        - nodejs
+        - github-actions
+      references:
+        - https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions
+        - https://owasp.org/www-community/attacks/Command_Injection
+      cwe2022-top25: true
+      cwe2021-top25: true
+      subcategory:
+        - vuln
+      likelihood: HIGH
+      impact: HIGH
+      confidence: HIGH
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR
+    mode: taint
+
+    pattern-sources:
       - patterns:
-        - pattern-either:
-          - pattern: $CP.exec($CMD)
-          - pattern: $CP.execSync($CMD)
-          - pattern: exec($CMD)
-          - pattern: execSync($CMD)
-        - focus-metavariable: $CMD
-      # child_process.spawn and spawnSync - command argument
+          - pattern-either:
+              # GitHub context payload
+              - pattern: $GITHUB.context.payload.pull_request.title
+              - pattern: $GITHUB.context.payload.pull_request.body
+              - pattern: $GITHUB.context.payload.pull_request.head.ref
+              - pattern: $GITHUB.context.payload.pull_request.head.label
+              - pattern: $GITHUB.context.payload.pull_request.head.sha
+              - pattern: $GITHUB.context.payload.issue.title
+              - pattern: $GITHUB.context.payload.issue.body
+              - pattern: $GITHUB.context.payload.comment.body
+              - pattern: $GITHUB.context.payload.$PROP
+          - pattern-either:
+              - pattern-inside: |
+                  const $GITHUB = require('@actions/github')
+                  ...
+              - pattern-inside: |
+                  import $GITHUB from '@actions/github'
+                  ...
+              - pattern-inside: |
+                  import * as $GITHUB from '@actions/github'
+                  ...
+
+    pattern-sinks:
       - patterns:
-        - pattern-either:
-          - pattern: $CP.spawn($CMD, ...)
-          - pattern: $CP.spawnSync($CMD, ...)
-          - pattern: spawn($CMD, ...)
-          - pattern: spawnSync($CMD, ...)
-        - focus-metavariable: $CMD
-      # child_process.spawn and spawnSync - args argument
-      - patterns:
-        - pattern-either:
-          - pattern: $CP.spawn($CMD, $ARGS)
-          - pattern: $CP.spawn($CMD, $ARGS, $OPTS)
-          - pattern: $CP.spawnSync($CMD, $ARGS)
-          - pattern: $CP.spawnSync($CMD, $ARGS, $OPTS)
-          - pattern: spawn($CMD, $ARGS)
-          - pattern: spawn($CMD, $ARGS, $OPTS)
-          - pattern: spawnSync($CMD, $ARGS)
-          - pattern: spawnSync($CMD, $ARGS, $OPTS)
-        - focus-metavariable: $ARGS
-      # child_process.execFile and execFileSync - command argument
-      - patterns:
-        - pattern-either:
-          - pattern: $CP.execFile($CMD, ...)
-          - pattern: $CP.execFileSync($CMD, ...)
-          - pattern: execFile($CMD, ...)
-          - pattern: execFileSync($CMD, ...)
-        - focus-metavariable: $CMD
-      # child_process.execFile and execFileSync - args argument
-      - patterns:
-        - pattern-either:
-          - pattern: $CP.execFile($FILE, $ARGS)
-          - pattern: $CP.execFile($FILE, $ARGS, $OPTS, ...)
-          - pattern: $CP.execFileSync($FILE, $ARGS)
-          - pattern: $CP.execFileSync($FILE, $ARGS, $OPTS)
-          - pattern: execFile($FILE, $ARGS)
-          - pattern: execFile($FILE, $ARGS, $OPTS, ...)
-          - pattern: execFileSync($FILE, $ARGS)
-          - pattern: execFileSync($FILE, $ARGS, $OPTS)
-        - focus-metavariable: $ARGS
-      # @actions/exec
-      - patterns:
-        - pattern-either:
-          - pattern: $AEXEC.exec($CMD)
-          - pattern: $AEXEC.exec($CMD, $ARGS)
-        - focus-metavariable: $CMD
-    - pattern-either:
-      # child_process imports
-      - pattern-inside: |
-          $CP = require('child_process')
-          ...
-      - pattern-inside: |
-          import $CP from 'child_process'
-          ...
-      - pattern-inside: |
-          import * as $CP from 'child_process'
-          ...
-      - pattern-inside: |
-          const { ..., exec, ... } = require('child_process')
-          ...
-      - pattern-inside: |
-          const { ..., execSync, ... } = require('child_process')
-          ...
-      - pattern-inside: |
-          const { ..., spawn, ... } = require('child_process')
-          ...
-      - pattern-inside: |
-          const { ..., spawnSync, ... } = require('child_process')
-          ...
-      - pattern-inside: |
-          const { ..., execFile, ... } = require('child_process')
-          ...
-      - pattern-inside: |
-          const { ..., execFileSync, ... } = require('child_process')
-          ...
-      - pattern-inside: |
-          import { ..., exec, ... } from 'child_process'
-          ...
-      - pattern-inside: |
-          import { ..., execSync, ... } from 'child_process'
-          ...
-      - pattern-inside: |
-          import { ..., spawn, ... } from 'child_process'
-          ...
-      - pattern-inside: |
-          import { ..., spawnSync, ... } from 'child_process'
-          ...
-      - pattern-inside: |
-          import { ..., execFile, ... } from 'child_process'
-          ...
-      - pattern-inside: |
-          import { ..., execFileSync, ... } from 'child_process'
-          ...
-      # @actions/exec imports
-      - pattern-inside: |
-          const $AEXEC = require('@actions/exec')
-          ...
-      - pattern-inside: |
-          import $AEXEC from '@actions/exec'
-          ...
-      - pattern-inside: |
-          import * as $AEXEC from '@actions/exec'
-          ...
+          - pattern-either:
+              # child_process sinks - only first argument (no options object)
+              - patterns:
+                  - pattern-either:
+                      - pattern: $CP.exec($CMD)
+                      - pattern: $CP.execSync($CMD)
+                      - pattern: exec($CMD)
+                      - pattern: execSync($CMD)
+                  - focus-metavariable: $CMD
+              # child_process.spawn and spawnSync - command argument
+              - patterns:
+                  - pattern-either:
+                      - pattern: $CP.spawn($CMD, ...)
+                      - pattern: $CP.spawnSync($CMD, ...)
+                      - pattern: spawn($CMD, ...)
+                      - pattern: spawnSync($CMD, ...)
+                  - focus-metavariable: $CMD
+              # child_process.spawn and spawnSync - args argument
+              - patterns:
+                  - pattern-either:
+                      - pattern: $CP.spawn($CMD, $ARGS)
+                      - pattern: $CP.spawn($CMD, $ARGS, $OPTS)
+                      - pattern: $CP.spawnSync($CMD, $ARGS)
+                      - pattern: $CP.spawnSync($CMD, $ARGS, $OPTS)
+                      - pattern: spawn($CMD, $ARGS)
+                      - pattern: spawn($CMD, $ARGS, $OPTS)
+                      - pattern: spawnSync($CMD, $ARGS)
+                      - pattern: spawnSync($CMD, $ARGS, $OPTS)
+                  - focus-metavariable: $ARGS
+              # child_process.execFile and execFileSync - command argument
+              - patterns:
+                  - pattern-either:
+                      - pattern: $CP.execFile($CMD, ...)
+                      - pattern: $CP.execFileSync($CMD, ...)
+                      - pattern: execFile($CMD, ...)
+                      - pattern: execFileSync($CMD, ...)
+                  - focus-metavariable: $CMD
+              # child_process.execFile and execFileSync - args argument
+              - patterns:
+                  - pattern-either:
+                      - pattern: $CP.execFile($FILE, $ARGS)
+                      - pattern: $CP.execFile($FILE, $ARGS, $OPTS, ...)
+                      - pattern: $CP.execFileSync($FILE, $ARGS)
+                      - pattern: $CP.execFileSync($FILE, $ARGS, $OPTS)
+                      - pattern: execFile($FILE, $ARGS)
+                      - pattern: execFile($FILE, $ARGS, $OPTS, ...)
+                      - pattern: execFileSync($FILE, $ARGS)
+                      - pattern: execFileSync($FILE, $ARGS, $OPTS)
+                  - focus-metavariable: $ARGS
+              # @actions/exec
+              - patterns:
+                  - pattern-either:
+                      - pattern: $AEXEC.exec($CMD)
+                      - pattern: $AEXEC.exec($CMD, $ARGS)
+                  - focus-metavariable: $CMD
+          - pattern-either:
+              # child_process imports
+              - pattern-inside: |
+                  $CP = require('child_process')
+                  ...
+              - pattern-inside: |
+                  import $CP from 'child_process'
+                  ...
+              - pattern-inside: |
+                  import * as $CP from 'child_process'
+                  ...
+              - pattern-inside: |
+                  const { ..., exec, ... } = require('child_process')
+                  ...
+              - pattern-inside: |
+                  const { ..., execSync, ... } = require('child_process')
+                  ...
+              - pattern-inside: |
+                  const { ..., spawn, ... } = require('child_process')
+                  ...
+              - pattern-inside: |
+                  const { ..., spawnSync, ... } = require('child_process')
+                  ...
+              - pattern-inside: |
+                  const { ..., execFile, ... } = require('child_process')
+                  ...
+              - pattern-inside: |
+                  const { ..., execFileSync, ... } = require('child_process')
+                  ...
+              - pattern-inside: |
+                  import { ..., exec, ... } from 'child_process'
+                  ...
+              - pattern-inside: |
+                  import { ..., execSync, ... } from 'child_process'
+                  ...
+              - pattern-inside: |
+                  import { ..., spawn, ... } from 'child_process'
+                  ...
+              - pattern-inside: |
+                  import { ..., spawnSync, ... } from 'child_process'
+                  ...
+              - pattern-inside: |
+                  import { ..., execFile, ... } from 'child_process'
+                  ...
+              - pattern-inside: |
+                  import { ..., execFileSync, ... } from 'child_process'
+                  ...
+              # @actions/exec imports
+              - pattern-inside: |
+                  const $AEXEC = require('@actions/exec')
+                  ...
+              - pattern-inside: |
+                  import $AEXEC from '@actions/exec'
+                  ...
+              - pattern-inside: |
+                  import * as $AEXEC from '@actions/exec'
+                  ...
