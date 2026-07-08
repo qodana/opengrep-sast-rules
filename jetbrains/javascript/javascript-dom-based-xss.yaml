@@ -1,203 +1,474 @@
 rules:
-- id: benchmark-dom-based-xss
-  message: User-controlled browser data reaches a DOM HTML sink.
-  languages:
-  - javascript
-  - typescript
-  severity: ERROR
-  mode: taint
-  pattern-sources:
-  - pattern-either:
-    - pattern: document.location
-    - pattern: document.location.href
-    - pattern: document.location.search
-    - pattern: document.location.hash
-    - pattern: window.location
-    - pattern: window.location.href
-    - pattern: window.location.search
-    - pattern: window.location.hash
-    - pattern: location
-    - pattern: location.href
-    - pattern: location.search
-    - pattern: location.hash
-    - pattern: window.name
-    - pattern: $REQ.param(...)
-    - pattern: $REQ.query.$KEY
-    - pattern: $REQ.query[$KEY]
-    - pattern: $REQ.params.$KEY
-    - pattern: $REQ.params[$KEY]
-    - pattern: $ROUTER.query
-    - pattern: $ROUTER.query.$KEY
-    - pattern: $CONTEXT.params
-    - pattern: $CONTEXT.params.$KEY
-    - pattern: $CONTEXT.query
-    - pattern: $CONTEXT.query.$KEY
-    - pattern: $EVENT.clipboardData.getData(...)
-    - pattern: $EVENT.dataTransfer.getData(...)
-    - pattern: $EVENT.originalEvent.clipboardData.getData(...)
-    - pattern: $EVENT.originalEvent.dataTransfer.getData(...)
-    - pattern: clipboardData.getData(...)
-    - pattern: dataTransfer.getData(...)
-    - pattern: Cookie.get(...)
-    - pattern: $COOKIE.get(...)
-    - pattern: $ROUTE.params
-    - pattern: $ROUTE.params.$KEY
-    - pattern: $ROUTE.queryParams
-    - pattern: $ROUTE.queryParams.$KEY
-    - pattern: $ROUTE.fragment
-    - pattern: $ROUTE.paramMap.get(...)
-    - pattern: $ROUTE.queryParamMap.get(...)
-    - pattern: $ROUTE.snapshot.params
-    - pattern: $ROUTE.snapshot.params.$KEY
-    - pattern: $ROUTE.snapshot.queryParams
-    - pattern: $ROUTE.snapshot.queryParams.$KEY
-    - pattern: $ROUTE.snapshot.fragment
-    - pattern: $ROUTE.snapshot.paramMap.get(...)
-    - pattern: $ROUTE.snapshot.queryParamMap.get(...)
-    - pattern: $ROUTE.snapshot.url[$IDX].path
-    - pattern: $ROUTE.snapshot.url[$IDX].parameters
-    - pattern: $ROUTE.snapshot.url[$IDX].parameters.$KEY
-    - pattern: $ROUTE.snapshot.url[$IDX].parameterMap.get(...)
-    - pattern: $ROUTE.snapshot.url[$IDX].parameterMap.params.$KEY
-    - pattern: $ROUTER.url
-    - pattern: ɵgetDOM().getLocation().href
-    - pattern: $MAP.get(...)
-    - pattern: $VALUE.comment
-    - pattern: $VALUE[$IDX].comment
-    - pattern: $VALUE.Body.toString()
-    - pattern: $VALUE.ResultSet.Rows[$ROW].Data[$COLUMN].VarCharValue
-    - pattern: $VALUE.records
-    - pattern: $VALUE.updateResults
-    - pattern: $VALUE.Item
-  - patterns:
-    - pattern-either:
-      - pattern: $TARGET.addEventListener("message", function($EVENT) { ... })
-      - pattern: $TARGET.addEventListener('message', function($EVENT) { ... })
-      - pattern: function foo($X, $EVENT, $Y) { ... }
-    - focus-metavariable: $EVENT
-  pattern-sinks:
-  - patterns:
-    - pattern-either:
-      - pattern: $($VALUE)
-      - pattern: $($HTML, ...)
-      - pattern: $($EL).html($VALUE, ...)
-      - pattern: $EL.html($VALUE, ...)
-      - pattern: $($EL).append($VALUE, ...)
-      - pattern: $($EL).appendTo($VALUE, ...)
-      - pattern: $($EL).replaceWith($VALUE, ...)
-      - pattern: $EL.replaceWith($VALUE, ...)
-      - pattern: $($EL).attr($ATTR, $VALUE, ...)
-      - pattern: '$($EL).attr({ href: $VALUE, ... })'
-      - pattern: '$($EL).attr({ src: $VALUE, ... })'
-      - pattern: document.write($VALUE, ...)
-      - pattern: $EL.innerHTML = $VALUE
-      - pattern: $EL.innerHTML += $VALUE
-      - pattern: $EL.outerHTML = $VALUE
-      - pattern: $EL.insertAdjacentHTML($POS, $VALUE, ...)
-      - pattern: '$EL.dangerouslySetInnerHTML = { __html: $VALUE, ... }'
-      - pattern: '<$TAG ... dangerouslySetInnerHTML={{ __html: $VALUE, ... }} ... />'
-      - pattern: 'React.createElement($TAG, {dangerouslySetInnerHTML: {__html: $VALUE, ...}}, ...)'
-      - pattern: 'React.createFactory($TAG)({dangerouslySetInnerHTML: {__html: $VALUE, ...}}, ...)'
-      - pattern: $SANITIZER.bypassSecurityTrustHtml($VALUE, ...)
-      - pattern: $RENDERER.setProperty($EL, "innerHTML", $VALUE, ...)
-      - pattern: $RENDERER.setProperty($EL, 'innerHTML', $VALUE, ...)
-      - pattern: $SCE.trustAsHtml($VALUE, ...)
-      - pattern: $SCE.trustAsCss($VALUE, ...)
-      - pattern: $SCE.trustAs($SCE.HTML, $VALUE, ...)
-      - pattern: $SCE.trustAs($SCE.CSS, $VALUE, ...)
-      - pattern: angular.element($VALUE, ...)
-      - pattern: angular.element($EL).html($VALUE, ...)
-      - pattern: $PARSER.parseFromString($VALUE, ...)
-      - pattern: $RANGE.createContextualFragment($VALUE, ...)
-      - pattern: new Handlebars.SafeString($VALUE, ...)
-      - pattern: 'new Element($TAG, {html: $VALUE, ...})'
-      - pattern: $EL.set("html", $VALUE, ...)
-      - pattern: '$EL.set({"html": $VALUE, ...})'
-      - pattern: $EL.setProperty("html", $VALUE, ...)
-      - pattern: '$EL.setProperties({"html": $VALUE, ...})'
-      - pattern: $EL.appendHtml($VALUE, ...)
-      - pattern: $.jGrowl($VALUE, ...)
-      - pattern: navigation.navigate($VALUE, ...)
-      - pattern: $HISTORY.push($VALUE, ...)
-      - pattern: $CONVERT.toHtml($VALUE, ...)
-      - pattern: '$MAIL.sendMail({html: $VALUE, ...}, ...)'
-    - focus-metavariable: $VALUE
-  pattern-propagators:
-  - pattern: $TO = $FROM
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $FROM.$FIELD
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $FROM[$KEY]
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $FROM + $OTHER
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $OTHER + $FROM
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $FROM.$METHOD(...)
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $METHOD($FROM, ...)
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $METHOD(..., $FROM, ...)
-    from: $FROM
-    to: $TO
-  - pattern: $TO = new URL($FROM, ...)
-    from: $FROM
-    to: $TO
-  - pattern: $TO = new URLSearchParams($FROM, ...)
-    from: $FROM
-    to: $TO
-  - pattern: $TO.push($FROM)
-    from: $FROM
-    to: $TO
-  - pattern: $FROM.forEach(function ($ITEM) { ... })
-    from: $FROM
-    to: $ITEM
-  - pattern: $FROM.forEach(($ITEM) => { ... })
-    from: $FROM
-    to: $ITEM
-  - pattern: $TO = await $FROM
-    from: $FROM
-    to: $TO
+  - id: javascript-dom-based-xss
+    metadata:
+      category: security
+      cwe:
+        - "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp:
+        - "A07:2017 - Cross-Site Scripting (XSS)"
+        - "A03:2021 - Injection"
+        - "A05:2025 - Injection"
+    message: User-controlled browser data reaches a DOM HTML sink.
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR
+    mode: taint
 
-  pattern-sanitizers:
-  - pattern-either:
-    - pattern: parseInt(...)
-    - pattern: Number(...)
-    - pattern: $VALUE.length
-    - pattern: encodeURI(...)
-    - pattern: encodeURIComponent(...)
-    - pattern: escape(...)
-  - patterns:
-    - pattern-either:
-      - pattern: if (/^\d+$/.test($VALUE)) { ... }
-      - pattern: if (($M = /^\d+$/.exec($VALUE))) { ... }
-      - pattern: if ($VALUE.match(/^\d+$/)) { ... }
-      - pattern: if ($VALUE.match("^\\d+$")) { ... }
-      - pattern: |
-          if (!(/^\d+$/.test($VALUE)))
-            return;
-    - focus-metavariable: $VALUE
-    by-side-effect: true
-  - patterns:
-    - pattern-either:
-      - pattern: |
-          if ($REGEX.test($VALUE)) {
-            ...
-          } else {
-            ...
-          }
-      - pattern: |
-          if ($REGEX.exec($VALUE)) {
-            ...
-          } else {
-            ...
-          }
-    - focus-metavariable: $VALUE
-    by-side-effect: true
+    pattern-sources:
+      - pattern-either:
+          - pattern: document.location
+          - pattern: document.location.href
+          - pattern: document.location.search
+          - pattern: document.location.hash
+          - pattern: window.location
+          - pattern: window.location.href
+          - pattern: window.location.search
+          - pattern: window.location.hash
+          - pattern: location
+          - pattern: location.href
+          - pattern: location.search
+          - pattern: location.hash
+          - pattern: window.name
+          - pattern: $REQ.query
+          - pattern: $REQ.query.$KEY
+          - pattern: $REQ.query[$KEY]
+          - pattern: $REQ.params
+          - pattern: $REQ.params.$KEY
+          - pattern: $REQ.params[$KEY]
+          - pattern: $REQ.param(...)
+          - pattern: $EVENT.clipboardData.getData(...)
+          - pattern: $EVENT.dataTransfer.getData(...)
+          - pattern: $EVENT.originalEvent.clipboardData.getData(...)
+          - pattern: $EVENT.originalEvent.dataTransfer.getData(...)
+          - pattern: clipboardData.getData(...)
+          - pattern: dataTransfer.getData(...)
+          - pattern: Cookie.get(...)
+          - pattern: $ROUTE.url
+          - pattern: $ROUTE.params
+          - pattern: $ROUTE.params.$KEY
+          - pattern: $ROUTE.queryParams
+          - pattern: $ROUTE.queryParams.$KEY
+          - pattern: $ROUTE.fragment
+          - pattern: $ROUTE.paramMap.get(...)
+          - pattern: $ROUTE.queryParamMap.get(...)
+          - pattern: $ROUTE.snapshot.params
+          - pattern: $ROUTE.snapshot.params.$KEY
+          - pattern: $ROUTE.snapshot.queryParams
+          - pattern: $ROUTE.snapshot.queryParams.$KEY
+          - pattern: $ROUTE.snapshot.fragment
+          - pattern: $ROUTE.snapshot.paramMap.get(...)
+          - pattern: $ROUTE.snapshot.queryParamMap.get(...)
+          - pattern: $ROUTE.snapshot.url[$IDX].path
+          - pattern: $ROUTE.snapshot.url[$IDX].parameters
+          - pattern: $ROUTE.snapshot.url[$IDX].parameters.$KEY
+          - pattern: $ROUTE.snapshot.url[$IDX].parameterMap.get(...)
+          - pattern: $ROUTE.snapshot.url[$IDX].parameterMap.params.$KEY
+          - patterns:
+              - pattern-inside: |
+                  import { ɵgetDOM } from '@angular/common';
+                  ...
+              - pattern: ɵgetDOM().getLocation().href
+          # TODO: find out why it was needed
+          #- pattern: $MAP.get(...)
+          - pattern: $VALUE.comment
+          - pattern: $VALUE[$IDX].comment
+          - pattern: $VALUE.Body.toString()
+          - pattern: $VALUE.ResultSet.Rows[$ROW].Data[$COLUMN].VarCharValue
+          - pattern: $VALUE.records
+          - pattern: $VALUE.updateResults
+          - pattern: $VALUE.Item
+      - patterns:
+          - pattern-either:
+              - pattern: $TARGET.addEventListener("message", function($EVENT) { ... })
+              - pattern: $TARGET.addEventListener('message', function($EVENT) { ... })
+              - pattern: function foo($X, $EVENT, $Y) { ... }
+          - focus-metavariable: $EVENT
+
+      # MessageEvent data, pinned to a 'message' listener
+      - patterns:
+          - pattern-either:
+              - pattern: $EVENT.data
+              - pattern: $EVENT.origin
+          - pattern-either:
+              - pattern-inside: |
+                  $T.addEventListener("message", function ($EVENT) { ... })
+              - pattern-inside: |
+                  $T.addEventListener('message', function ($EVENT) { ... })
+              - pattern-inside: |
+                  $T.addEventListener("message", ($EVENT) => { ... })
+              - pattern-inside: |
+                  $T.addEventListener('message', ($EVENT) => { ... })
+              - pattern-inside: |
+                  addEventListener("message", function ($EVENT) { ... })
+              - pattern-inside: |
+                  addEventListener('message', function ($EVENT) { ... })
+              - pattern-inside: |
+                  addEventListener("message", ($EVENT) => { ... })
+              - pattern-inside: |
+                  addEventListener('message', ($EVENT) => { ... })
+              - pattern-inside: |
+                  $T.onmessage = function ($EVENT) { ... }
+              - pattern-inside: |
+                  $T.onmessage = ($EVENT) => { ... }
+              - pattern-inside: |
+                  window.onmessage = function ($EVENT) { ... }
+              - pattern-inside: |
+                  window.onmessage = ($EVENT) => { ... }
+      # XHR direct response sources (XMLHttpRequest)
+      - pattern-either:
+          - pattern: $XHR.responseText
+          - pattern: $XHR.response
+          - pattern: $XHR.responseXML
+      # HTTP client response body/data/json/text, pinned to an awaited HTTP-shaped call
+      - patterns:
+          - pattern-either:
+              - pattern: $RESP.body
+              - pattern: $RESP.data
+              - pattern: $RESP.json()
+              - pattern: $RESP.text()
+              - pattern: $RESP.blob()
+              - pattern: await $RESP.json()
+              - pattern: await $RESP.text()
+          - pattern-either:
+              - pattern-inside: |
+                  $RESP = await $HTTP.get(...)
+                  ...
+              - pattern-inside: |
+                  $RESP = await $HTTP.post(...)
+                  ...
+              - pattern-inside: |
+                  $RESP = await $HTTP.put(...)
+                  ...
+              - pattern-inside: |
+                  $RESP = await $HTTP.delete(...)
+                  ...
+              - pattern-inside: |
+                  $RESP = await $HTTP.patch(...)
+                  ...
+              - pattern-inside: |
+                  $RESP = await $HTTP(...)
+                  ...
+              - pattern-inside: |
+                  $RESP = await fetch(...)
+                  ...
+      # TanStack Query hooks — treat the call expression as a source
+      - pattern-either:
+          - pattern: useQuery(...)
+          - pattern: useQueries(...)
+          - pattern: useInfiniteQuery(...)
+          - pattern: useSuspenseQuery(...)
+          - pattern: useSuspenseQueries(...)
+          - pattern: useSuspenseInfiniteQuery(...)
+          - pattern: injectQuery(...)
+      # React Relay data hooks — treat the call expression as a source
+      - pattern-either:
+          - pattern: useFragment(...)
+          - pattern: useLazyLoadQuery(...)
+          - pattern: usePreloadedQuery(...)
+          - pattern: useQueryLoader(...)
+          - pattern: useClientQuery(...)
+          - pattern: useRefetchableFragment(...)
+          - pattern: usePaginationFragment(...)
+      # AWS SDK v3 response: result of `await $CLIENT.send(...)`
+      - patterns:
+          - pattern-either:
+              - pattern: $RESULT.$KEY
+              - pattern: $RESULT.$KEY.$DEEP
+              - pattern: $RESULT.$KEY[$IDX]
+              - pattern: $RESULT.$KEY[$IDX].$DEEP
+          - pattern-either:
+              - pattern-inside: |
+                  $RESULT = await $CLIENT.send(...)
+                  ...
+              - pattern-inside: |
+                  const $RESULT = await $CLIENT.send(...)
+                  ...
+              - pattern-inside: |
+                  let $RESULT = await $CLIENT.send(...)
+                  ...
+              - pattern-inside: |
+                  var $RESULT = await $CLIENT.send(...)
+                  ...
+      # AWS SDK v2 response: `await $CLIENT.$METHOD(...).promise()`
+      - patterns:
+          - pattern-either:
+              - pattern: $DATA.$KEY
+              - pattern: $DATA.$KEY.$DEEP
+              - pattern: $DATA.$KEY[$IDX]
+          - pattern-either:
+              - pattern-inside: |
+                  $DATA = await $CLIENT.$METHOD(...).promise()
+                  ...
+              - pattern-inside: |
+                  const $DATA = await $CLIENT.$METHOD(...).promise()
+                  ...
+              - pattern-inside: |
+                  let $DATA = await $CLIENT.$METHOD(...).promise()
+                  ...
+              - pattern-inside: |
+                  var $DATA = await $CLIENT.$METHOD(...).promise()
+                  ...
+      # AWS SDK callback-style result: client.method(params, (err, data) => {...})
+      - patterns:
+          - pattern-either:
+              - pattern: $DATA.$KEY
+              - pattern: $DATA.$KEY.$DEEP
+              - pattern: $DATA.$KEY[$IDX]
+              - pattern: $DATA.$KEY[$IDX].$DEEP
+              - pattern: $DATA[$IDX]
+              - pattern: $DATA[$IDX].$KEY
+              - pattern: $DATA[$IDX].$KEY.$DEEP
+          - pattern-either:
+              - pattern-inside: |
+                  $CLIENT.$METHOD($_, function ($ERR, $DATA) { ... })
+              - pattern-inside: |
+                  $CLIENT.$METHOD($_, ($ERR, $DATA) => { ... })
+      # AWS SDK .then-style result: client.method(params).promise().then(data => {...})
+      - patterns:
+          - pattern-either:
+              - pattern: $DATA.$KEY
+              - pattern: $DATA.$KEY.$DEEP
+              - pattern: $DATA.$KEY[$IDX]
+              - pattern: $DATA.$KEY[$IDX].$DEEP
+              - pattern: $DATA[$IDX]
+              - pattern: $DATA[$IDX].$KEY
+              - pattern: $DATA[$IDX].$KEY.$DEEP
+          - pattern-either:
+              - pattern-inside: |
+                  $CLIENT.$METHOD(...).promise().then(function ($DATA) { ... })
+              - pattern-inside: |
+                  $CLIENT.$METHOD(...).promise().then(($DATA) => { ... })
+              - pattern-inside: |
+                  $CLIENT.$METHOD(...).then(function ($DATA) { ... })
+              - pattern-inside: |
+                  $CLIENT.$METHOD(...).then(($DATA) => { ... })
+      # Next.js useRouter().query
+      - patterns:
+          - pattern-either:
+              - pattern: $ROUTER.query
+              - pattern: $ROUTER.query.$KEY
+              - pattern: $ROUTER.query[$KEY]
+              - pattern: $ROUTER.asPath
+          - pattern-either:
+              - pattern-inside: |
+                  $ROUTER = useRouter()
+                  ...
+              - pattern-inside: |
+                  const $ROUTER = useRouter()
+                  ...
+              - pattern-inside: |
+                  let $ROUTER = useRouter()
+                  ...
+              - pattern-inside: |
+                  var $ROUTER = useRouter()
+                  ...
+
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $($EL).html($VALUE, ...)
+              - pattern: $EL.html($VALUE, ...)
+              - pattern: $($EL).append($VALUE, ...)
+              - pattern: $($EL).appendTo($VALUE, ...)
+              - pattern: $($EL).replaceWith($VALUE, ...)
+              - pattern: $EL.replaceWith($VALUE, ...)
+              # TODO not specific enough
+              #- pattern: $($EL).attr($ATTR, $VALUE, ...)
+              #- pattern: '$($EL).attr({ href: $VALUE, ... })'
+              #- pattern: '$($EL).attr({ src: $VALUE, ... })'
+              - pattern: document.write($VALUE, ...)
+              - pattern: $EL.innerHTML = $VALUE
+              - pattern: $EL.innerHTML += $VALUE
+              - pattern: $EL.outerHTML = $VALUE
+              - pattern: $EL.insertAdjacentHTML($POS, $VALUE, ...)
+              - pattern: '$EL.dangerouslySetInnerHTML = { __html: $VALUE, ... }'
+              - pattern: '<$TAG ... dangerouslySetInnerHTML={{ __html: $VALUE, ... }} ... />'
+              - pattern: 'React.createElement($TAG, {dangerouslySetInnerHTML: {__html: $VALUE, ...}}, ...)'
+              - pattern: 'React.createFactory($TAG)({dangerouslySetInnerHTML: {__html: $VALUE, ...}}, ...)'
+              - pattern: $SANITIZER.bypassSecurityTrustHtml($VALUE, ...)
+              - pattern: $RENDERER.setProperty($EL, "innerHTML", $VALUE, ...)
+              - pattern: $RENDERER.setProperty($EL, 'innerHTML', $VALUE, ...)
+              - pattern: $SCE.trustAsHtml($VALUE, ...)
+              - pattern: $SCE.trustAsCss($VALUE, ...)
+              - pattern: $SCE.trustAs($SCE.HTML, $VALUE, ...)
+              - pattern: $SCE.trustAs($SCE.CSS, $VALUE, ...)
+              - pattern: angular.element($VALUE, ...)
+              - pattern: angular.element($EL).html($VALUE, ...)
+              - pattern: $PARSER.parseFromString($VALUE, ...)
+              - pattern: $RANGE.createContextualFragment($VALUE, ...)
+              - pattern: new Handlebars.SafeString($VALUE, ...)
+              - pattern: 'new Element($TAG, {html: $VALUE, ...})'
+              - pattern: $EL.set("html", $VALUE, ...)
+              - pattern: '$EL.set({"html": $VALUE, ...})'
+              - pattern: $EL.setProperty("html", $VALUE, ...)
+              - pattern: '$EL.setProperties({"html": $VALUE, ...})'
+              - pattern: $EL.appendHtml($VALUE, ...)
+              - pattern: $.jGrowl($VALUE, ...)
+              - pattern: navigation.navigate($VALUE, ...)
+              - pattern: $CONVERT.toHtml($VALUE, ...)
+              - pattern: '$MAIL.sendMail({html: $VALUE, ...}, ...)'
+          - focus-metavariable: $VALUE
+      # jQuery construction from string concat / array.join, restricted to literals
+      # that look like HTML (contain `<`) so we don't match selector construction
+      # such as $("." + tainted) or $(tainted).
+      - patterns:
+          - pattern-either:
+              - pattern: $($A + $VALUE + $B, ...)
+              - pattern: $($A + $VALUE, ...)
+              - pattern: $($VALUE + $B, ...)
+              - pattern: $($A.concat($VALUE, ...), ...)
+              - pattern: $([$A, $VALUE, $B].join(...), ...)
+          - metavariable-regex:
+              metavariable: $A
+              regex: '<'
+          - focus-metavariable: $VALUE
+      # jQuery construction from template literals — same <-required guard.
+      - patterns:
+          - pattern-either:
+              - pattern: $(`$A${$VALUE}$B`, ...)
+              - pattern: $(`$A${$VALUE}`, ...)
+          - metavariable-regex:
+              metavariable: $A
+              regex: '<'
+          - focus-metavariable: $VALUE
+      # Next.js router navigation (acts as a DOM-XSS-adjacent sink because of javascript: URLs)
+      - patterns:
+          - pattern-either:
+              - pattern: $ROUTER.push($VALUE, ...)
+              - pattern: $ROUTER.replace($VALUE, ...)
+          - pattern-either:
+              - pattern-inside: |
+                  $ROUTER = useRouter()
+                  ...
+              - pattern-inside: |
+                  const $ROUTER = useRouter()
+                  ...
+              - pattern-inside: |
+                  let $ROUTER = useRouter()
+                  ...
+              - pattern-inside: |
+                  var $ROUTER = useRouter()
+                  ...
+          - focus-metavariable: $VALUE
+
+    pattern-propagators:
+      - pattern: $TO = $FROM
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $FROM.$FIELD
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $FROM[$KEY]
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $FROM + $OTHER
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $OTHER + $FROM
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $FROM.$METHOD(...)
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $METHOD($FROM, ...)
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $METHOD(..., $FROM, ...)
+        from: $FROM
+        to: $TO
+      - pattern: $TO = new URL($FROM, ...)
+        from: $FROM
+        to: $TO
+      - pattern: $TO = new URLSearchParams($FROM, ...)
+        from: $FROM
+        to: $TO
+      - pattern: $TO.push($FROM)
+        from: $FROM
+        to: $TO
+      - pattern: $FROM.forEach(function ($ITEM) { ... })
+        from: $FROM
+        to: $ITEM
+      - pattern: $FROM.forEach(($ITEM) => { ... })
+        from: $FROM
+        to: $ITEM
+      - pattern: $TO = await $FROM
+        from: $FROM
+        to: $TO
+
+    pattern-sanitizers:
+      - pattern-either:
+          # Numeric coercion
+          - pattern: parseInt(...)
+          - pattern: parseFloat(...)
+          - pattern: Number(...)
+          - pattern: Number.parseInt(...)
+          - pattern: Number.parseFloat(...)
+          - pattern: BigInt(...)
+          - pattern: Math.floor(...)
+          - pattern: Math.round(...)
+          - pattern: Math.trunc(...)
+          - pattern: Math.abs(...)
+          # URL/text encoders
+          - pattern: encodeURI(...)
+          - pattern: encodeURIComponent(...)
+          - pattern: escape(...)
+          # String methods that return non-string scalars
+          - pattern: $VALUE.length
+          - pattern: $VALUE.charCodeAt(...)
+          - pattern: $VALUE.codePointAt(...)
+          - pattern: $VALUE.indexOf(...)
+          - pattern: $VALUE.lastIndexOf(...)
+          - pattern: $VALUE.includes(...)
+          - pattern: $VALUE.startsWith(...)
+          - pattern: $VALUE.endsWith(...)
+          # HTML sanitizer libraries
+          - pattern: DOMPurify.sanitize(...)
+          - pattern: $S.sanitize(...)
+          - pattern: sanitizeHtml(...)
+          - pattern: $S.sanitizeHtml(...)
+          - pattern: striptags(...)
+          # Conventional hand-rolled HTML escape helpers
+          - pattern: escapeHtml(...)
+          - pattern: escapeAttr(...)
+          - pattern: htmlEncode(...)
+          - pattern: htmlEscape(...)
+      # Taint that flows in as the date argument is parsed as a Date and discarded
+      - patterns:
+          - pattern-either:
+              - pattern: dateFns.format($VALUE, ...)
+              - pattern: dateFnsEsm.format($VALUE, ...)
+              - pattern: dateformat($VALUE, ...)
+              - pattern: moment($VALUE)
+              - pattern: dayjs($VALUE)
+              - pattern: DateTime.fromISO($VALUE, ...)
+              - pattern: DateTime.fromJSDate($VALUE, ...)
+              - pattern: $ADAPTER.formatByString($VALUE, ...)
+          - focus-metavariable: $VALUE
+      - patterns:
+          - pattern-either:
+              - pattern: if (/^\d+$/.test($VALUE)) { ... }
+              - pattern: if (($M = /^\d+$/.exec($VALUE))) { ... }
+              - pattern: if ($VALUE.match(/^\d+$/)) { ... }
+              - pattern: if ($VALUE.match("^\\d+$")) { ... }
+              - pattern: |
+                  if (!(/^\d+$/.test($VALUE)))
+                    return;
+          - focus-metavariable: $VALUE
+        by-side-effect: true
+      - patterns:
+          - pattern-either:
+              - pattern: |
+                  if ($REGEX.test($VALUE)) {
+                    ...
+                  } else {
+                    ...
+                  }
+              - pattern: |
+                  if ($REGEX.exec($VALUE)) {
+                    ...
+                  } else {
+                    ...
+                  }
+          - focus-metavariable: $VALUE
+        by-side-effect: true

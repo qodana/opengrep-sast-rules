@@ -1,150 +1,153 @@
 rules:
-- id: command-injection-from-environment-path
-  message: >-
-    Detected the use of __dirname or path operations in a shell command. While __dirname
-    itself is safe, concatenating it with user input or using it in shell commands
-    without proper escaping can lead to command injection if the path contains special
-    shell characters. Use execFile with array arguments instead of exec with string
-    concatenation, or ensure proper escaping of paths.
-  metadata:
-    cwe:
-    - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
-    owasp:
-    - A01:2017 - Injection
-    - A03:2021 - Injection
-    category: security
-    technology:
-    - javascript
-    - nodejs
-    references:
-    - https://owasp.org/www-community/attacks/Command_Injection
-    cwe2022-top25: true
-    cwe2021-top25: true
-    subcategory:
-    - vuln
-    likelihood: MEDIUM
-    impact: MEDIUM
-    confidence: LOW
-  languages:
-  - javascript
-  - typescript
-  severity: WARNING
-  mode: taint
-  pattern-sources:
-  - patterns:
-    - pattern-either:
-      # __dirname can be dangerous if directory name has spaces or special chars
-      - pattern: __dirname
-      - pattern: path.join(__dirname, ...)
-      - pattern: $PATH.join(__dirname, ...)
-      - pattern: path.resolve(__dirname, ...)
-      - pattern: $PATH.resolve(__dirname, ...)
-  pattern-sinks:
-  - patterns:
-    - pattern-either:
-      # Only flag exec/execSync as these interpret the command as shell - only first argument (no options object)
+  - id: javascript-command-injection-from-environment-path
+    message: >-
+      Detected the use of __dirname or path operations in a shell command. While __dirname
+      itself is safe, concatenating it with user input or using it in shell commands
+      without proper escaping can lead to command injection if the path contains special
+      shell characters. Use execFile with array arguments instead of exec with string
+      concatenation, or ensure proper escaping of paths.
+    metadata:
+      cwe:
+        - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
+      owasp:
+        - "A01:2017 - Injection"
+        - "A03:2021 - Injection"
+        - "A05:2025 - Injection"
+      category: security
+      technology:
+        - javascript
+        - nodejs
+      references:
+        - https://owasp.org/www-community/attacks/Command_Injection
+      cwe2022-top25: true
+      cwe2021-top25: true
+      subcategory:
+        - vuln
+      likelihood: MEDIUM
+      impact: MEDIUM
+      confidence: LOW
+    languages:
+      - javascript
+      - typescript
+    severity: WARNING
+    mode: taint
+
+    pattern-sources:
       - patterns:
-        - pattern-either:
-          - pattern: $CP.exec($CMD)
-          - pattern: $CP.execSync($CMD)
-          - pattern: exec($CMD)
-          - pattern: execSync($CMD)
-        - focus-metavariable: $CMD
-      # child_process.spawn and spawnSync - command argument
+          - pattern-either:
+              # __dirname can be dangerous if directory name has spaces or special chars
+              - pattern: __dirname
+              - pattern: path.join(__dirname, ...)
+              - pattern: $PATH.join(__dirname, ...)
+              - pattern: path.resolve(__dirname, ...)
+              - pattern: $PATH.resolve(__dirname, ...)
+
+    pattern-sinks:
       - patterns:
-        - pattern-either:
-          - pattern: $CP.spawn($CMD, ...)
-          - pattern: $CP.spawnSync($CMD, ...)
-          - pattern: spawn($CMD, ...)
-          - pattern: spawnSync($CMD, ...)
-        - focus-metavariable: $CMD
-      # child_process.spawn and spawnSync - args argument
-      - patterns:
-        - pattern-either:
-          - pattern: $CP.spawn($CMD, $ARGS)
-          - pattern: $CP.spawn($CMD, $ARGS, $OPTS)
-          - pattern: $CP.spawnSync($CMD, $ARGS)
-          - pattern: $CP.spawnSync($CMD, $ARGS, $OPTS)
-          - pattern: spawn($CMD, $ARGS)
-          - pattern: spawn($CMD, $ARGS, $OPTS)
-          - pattern: spawnSync($CMD, $ARGS)
-          - pattern: spawnSync($CMD, $ARGS, $OPTS)
-        - focus-metavariable: $ARGS
-      # child_process.execFile and execFileSync - command argument
-      - patterns:
-        - pattern-either:
-          - pattern: $CP.execFile($CMD, ...)
-          - pattern: $CP.execFileSync($CMD, ...)
-          - pattern: execFile($CMD, ...)
-          - pattern: execFileSync($CMD, ...)
-        - focus-metavariable: $CMD
-      # child_process.execFile and execFileSync - args argument
-      - patterns:
-        - pattern-either:
-          - pattern: $CP.execFile($FILE, $ARGS)
-          - pattern: $CP.execFile($FILE, $ARGS, $OPTS, ...)
-          - pattern: $CP.execFileSync($FILE, $ARGS)
-          - pattern: $CP.execFileSync($FILE, $ARGS, $OPTS)
-          - pattern: execFile($FILE, $ARGS)
-          - pattern: execFile($FILE, $ARGS, $OPTS, ...)
-          - pattern: execFileSync($FILE, $ARGS)
-          - pattern: execFileSync($FILE, $ARGS, $OPTS)
-        - focus-metavariable: $ARGS
-      # execa.shell variants
-      - patterns:
-        - pattern-either:
-          - pattern: $EXECA.shell($CMD, ...)
-          - pattern: $EXECA.shellSync($CMD, ...)
-        - focus-metavariable: $CMD
-    - pattern-either:
-      - pattern-inside: |
-          $CP = require('child_process')
-          ...
-      - pattern-inside: |
-          import $CP from 'child_process'
-          ...
-      - pattern-inside: |
-          import * as $CP from 'child_process'
-          ...
-      - pattern-inside: |
-          const { ..., exec, ... } = require('child_process')
-          ...
-      - pattern-inside: |
-          const { ..., execSync, ... } = require('child_process')
-          ...
-      - pattern-inside: |
-          const { ..., spawn, ... } = require('child_process')
-          ...
-      - pattern-inside: |
-          const { ..., spawnSync, ... } = require('child_process')
-          ...
-      - pattern-inside: |
-          const { ..., execFile, ... } = require('child_process')
-          ...
-      - pattern-inside: |
-          const { ..., execFileSync, ... } = require('child_process')
-          ...
-      - pattern-inside: |
-          import { ..., exec, ... } from 'child_process'
-          ...
-      - pattern-inside: |
-          import { ..., execSync, ... } from 'child_process'
-          ...
-      - pattern-inside: |
-          import { ..., spawn, ... } from 'child_process'
-          ...
-      - pattern-inside: |
-          import { ..., spawnSync, ... } from 'child_process'
-          ...
-      - pattern-inside: |
-          import { ..., execFile, ... } from 'child_process'
-          ...
-      - pattern-inside: |
-          import { ..., execFileSync, ... } from 'child_process'
-          ...
-      - pattern-inside: |
-          $EXECA = require('execa')
-          ...
-      - pattern-inside: |
-          import $EXECA from 'execa'
-          ...
+          - pattern-either:
+              # Only flag exec/execSync as these interpret the command as shell - only first argument (no options object)
+              - patterns:
+                  - pattern-either:
+                      - pattern: $CP.exec($CMD)
+                      - pattern: $CP.execSync($CMD)
+                      - pattern: exec($CMD)
+                      - pattern: execSync($CMD)
+                  - focus-metavariable: $CMD
+              # child_process.spawn and spawnSync - command argument
+              - patterns:
+                  - pattern-either:
+                      - pattern: $CP.spawn($CMD, ...)
+                      - pattern: $CP.spawnSync($CMD, ...)
+                      - pattern: spawn($CMD, ...)
+                      - pattern: spawnSync($CMD, ...)
+                  - focus-metavariable: $CMD
+              # child_process.spawn and spawnSync - args argument
+              - patterns:
+                  - pattern-either:
+                      - pattern: $CP.spawn($CMD, $ARGS)
+                      - pattern: $CP.spawn($CMD, $ARGS, $OPTS)
+                      - pattern: $CP.spawnSync($CMD, $ARGS)
+                      - pattern: $CP.spawnSync($CMD, $ARGS, $OPTS)
+                      - pattern: spawn($CMD, $ARGS)
+                      - pattern: spawn($CMD, $ARGS, $OPTS)
+                      - pattern: spawnSync($CMD, $ARGS)
+                      - pattern: spawnSync($CMD, $ARGS, $OPTS)
+                  - focus-metavariable: $ARGS
+              # child_process.execFile and execFileSync - command argument
+              - patterns:
+                  - pattern-either:
+                      - pattern: $CP.execFile($CMD, ...)
+                      - pattern: $CP.execFileSync($CMD, ...)
+                      - pattern: execFile($CMD, ...)
+                      - pattern: execFileSync($CMD, ...)
+                  - focus-metavariable: $CMD
+              # child_process.execFile and execFileSync - args argument
+              - patterns:
+                  - pattern-either:
+                      - pattern: $CP.execFile($FILE, $ARGS)
+                      - pattern: $CP.execFile($FILE, $ARGS, $OPTS, ...)
+                      - pattern: $CP.execFileSync($FILE, $ARGS)
+                      - pattern: $CP.execFileSync($FILE, $ARGS, $OPTS)
+                      - pattern: execFile($FILE, $ARGS)
+                      - pattern: execFile($FILE, $ARGS, $OPTS, ...)
+                      - pattern: execFileSync($FILE, $ARGS)
+                      - pattern: execFileSync($FILE, $ARGS, $OPTS)
+                  - focus-metavariable: $ARGS
+              # execa.shell variants
+              - patterns:
+                  - pattern-either:
+                      - pattern: $EXECA.shell($CMD, ...)
+                      - pattern: $EXECA.shellSync($CMD, ...)
+                  - focus-metavariable: $CMD
+          - pattern-either:
+              - pattern-inside: |
+                  $CP = require('child_process')
+                  ...
+              - pattern-inside: |
+                  import $CP from 'child_process'
+                  ...
+              - pattern-inside: |
+                  import * as $CP from 'child_process'
+                  ...
+              - pattern-inside: |
+                  const { ..., exec, ... } = require('child_process')
+                  ...
+              - pattern-inside: |
+                  const { ..., execSync, ... } = require('child_process')
+                  ...
+              - pattern-inside: |
+                  const { ..., spawn, ... } = require('child_process')
+                  ...
+              - pattern-inside: |
+                  const { ..., spawnSync, ... } = require('child_process')
+                  ...
+              - pattern-inside: |
+                  const { ..., execFile, ... } = require('child_process')
+                  ...
+              - pattern-inside: |
+                  const { ..., execFileSync, ... } = require('child_process')
+                  ...
+              - pattern-inside: |
+                  import { ..., exec, ... } from 'child_process'
+                  ...
+              - pattern-inside: |
+                  import { ..., execSync, ... } from 'child_process'
+                  ...
+              - pattern-inside: |
+                  import { ..., spawn, ... } from 'child_process'
+                  ...
+              - pattern-inside: |
+                  import { ..., spawnSync, ... } from 'child_process'
+                  ...
+              - pattern-inside: |
+                  import { ..., execFile, ... } from 'child_process'
+                  ...
+              - pattern-inside: |
+                  import { ..., execFileSync, ... } from 'child_process'
+                  ...
+              - pattern-inside: |
+                  $EXECA = require('execa')
+                  ...
+              - pattern-inside: |
+                  import $EXECA from 'execa'
+                  ...

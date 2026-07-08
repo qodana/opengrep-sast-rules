@@ -1,32 +1,38 @@
 rules:
-- id: benchmark-xpath-injection
-  message: User-controlled data reaches an XPath expression.
-  languages:
-  - javascript
-  - typescript
-  severity: ERROR
-  mode: taint
-  pattern-sources:
-  - pattern-either:
-    - pattern: $REQ.param(...)
-    - pattern: $REQ.query
-    - pattern: $REQ.query.$PARAM
-    - pattern: document.location.hash
-    - pattern: document.location.search
-    - pattern: location.hash
-    - pattern: location.search
-  pattern-sinks:
-  - patterns:
-    - pattern-either:
-      - pattern: xpath.parse($QUERY, ...)
-      - pattern: xpath.select($QUERY, ...)
-      - pattern: xpath.select1($QUERY, ...)
-      - pattern: document.createExpression($QUERY, ...)
-      - pattern: document.createExpression($QUERY)
-      - pattern: document.evaluate($QUERY, ...)
-      - pattern: document.evaluate($QUERY)
-    - focus-metavariable: $QUERY
-  - patterns:
-    - pattern: $EXPR($QUERY, ...)
-    - pattern-not: $OBJECT.$METHOD(...)
-    - focus-metavariable: $QUERY
+  - id: javascript-xpath-injection
+    metadata:
+      category: security
+      cwe:
+        - "CWE-643: Improper Neutralization of Data within XPath Expressions ('XPath Injection')"
+      owasp:
+        - "A01:2017 - Injection"
+        - "A03:2021 - Injection"
+        - "A05:2025 - Injection"
+    message: User-controlled data reaches an XPath expression.
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR
+    mode: taint
+
+    pattern-sources:
+      - pattern-either:
+          - pattern: $REQ.param(...)
+          - pattern: $REQ.query
+          - pattern: $REQ.query.$PARAM
+          - pattern: document.location.hash
+          - pattern: document.location.search
+          - pattern: location.hash
+          - pattern: location.search
+
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: xpath.parse($QUERY, ...)
+              - pattern: xpath.select($QUERY, ...)
+              - pattern: xpath.select1($QUERY, ...)
+              - pattern: document.createExpression($QUERY, ...)
+              - pattern: document.createExpression($QUERY)
+              - pattern: document.evaluate($QUERY, ...)
+              - pattern: document.evaluate($QUERY)
+          - focus-metavariable: $QUERY

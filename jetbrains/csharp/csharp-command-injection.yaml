@@ -1,11 +1,17 @@
 rules:
-  - id: csharp-codeql-command-injection
+  - id: csharp-command-injection
+    metadata:
+      category: security
+      cwe:
+        - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
+      owasp:
+        - "A01:2017 - Injection"
+        - "A03:2021 - Injection"
+        - "A05:2025 - Injection"
     languages: [ csharp ]
     severity: ERROR
     message: >-
-      Command injection: user-controlled input reaches `Process.Start` /
-      `ProcessStartInfo` without validation. Pass the executable as a constant
-      and arguments as a sanitized list.
+      User-controlled input reaches the process's starting logic without validation, leading to Command Injection vulnerability
     mode: taint
 
     pattern-sources:
@@ -16,10 +22,14 @@ rules:
                   metavariable: $BOX
                   type: TextBox
           - patterns:
-              - pattern: $READER.ExecuteReader(...)
-              - metavariable-type:
-                  metavariable: $READER
-                  type: System.Data.SqlClient.SqlCommand
+              - pattern: $CMD.ExecuteReader()
+              - pattern-either:
+                  - pattern-inside: |
+                      SqlCommand $CMD = new SqlCommand(...);
+                      ...
+                  - pattern-inside: |
+                      var $CMD = new SqlCommand(...);
+                      ...
 
     pattern-sinks:
       - pattern-either:
@@ -27,9 +37,7 @@ rules:
           - pattern: new ProcessStartInfo($CMD, $ARGS)
           - patterns:
               - pattern-either:
-                  - pattern: $INFO.FileName = $CMD
-                  - pattern: $INFO.Arguments = $CMD
-                  - pattern: $INFO.WorkingDirectory = $CMD
+                  - pattern: $INFO.$FIELD = $CMD
               - metavariable-type:
                   metavariable: $INFO
                   type: ProcessStartInfo

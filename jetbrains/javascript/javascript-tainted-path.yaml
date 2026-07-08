@@ -1,5 +1,13 @@
 rules:
-  - id: benchmark-javascript-tainted-path
+  - id: javascript-javascript-tainted-path
+    metadata:
+      category: security
+      cwe:
+        - "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp:
+        - "A05:2017 - Broken Access Control"
+        - "A01:2021 - Broken Access Control"
+        - "A01:2025 - Broken Access Control"
     message: User-controlled data reaches a filesystem path sink.
     languages:
       - javascript
@@ -17,8 +25,6 @@ rules:
           - pattern: $REQ.params
           - pattern: $REQ.body
           - pattern: $REQ.param(...)
-          - pattern: $REQUEST.params.$KEY
-          - pattern: $REQUEST.params[$KEY]
           - pattern: parseTorrent(...).name
 
     pattern-sinks:
@@ -63,14 +69,40 @@ rules:
               - pattern: $FS.unlinkSync($PATH, ...)
               - pattern: $FS.rename($PATH, ...)
               - pattern: $FS.renameSync($PATH, ...)
-              - pattern: $RES.render($PATH, ...)
-              - pattern: $RES.sendFile($PATH, ...)
-              - pattern: $RES.sendfile($PATH, ...)
-              - pattern: $RES.download($PATH, ...)
-              - pattern: require($PATH)
-              - pattern: resolve.sync($PATH, ...)
-              - pattern: resolve($PATH, ...)
-              - pattern: $FILE.mv($PATH, ...)
+              - pattern: $FS.mv($PATH, ...)
+              - pattern: makeDirectory($PATH, ...)
+              - pattern: makeDirectorySync($PATH, ...)
+              - pattern: open($PATH, ...)
+              - pattern: openApp($PATH, ...)
+              - pattern: chownr($PATH, ...)
+              - patterns:
+                  - pattern: $RES.render($PATH, ...)
+                  - pattern-either:
+                      - pattern-inside: |
+                          module.exports = ($REQ, $RES) => ...
+                      - pattern-inside: |
+                          $EXPRESS = require('express')
+                          ...
+                          $APP = $EXPRESS()
+                          ...
+                          var $VIEW = ($REQ, $RES) => ...
+                          ...
+                          $APP.get(..., $VIEW)
+              - patterns:
+                  - pattern: require($PATH, ...)
+                  - pattern-inside: |
+                      $EXPRESS = require('express')
+                      ...
+                      $APP = $EXPRESS()
+                      ...
+                      $APP.get(..., ...)
+              - patterns:
+                  - pattern-either:
+                      - pattern: $RESOLVE($PATH, ...)
+                      - pattern: $RESOLVE.sync($PATH, ...)
+                  - pattern-inside: |
+                      $RESOLVE = require("resolve")
+                      ...
               - pattern: '$CP.execa($CMD, { inputFile: $PATH })'
               - pattern: '$CP.execa($CMD, $ARGS, { inputFile: $PATH })'
               - pattern: '$PROC.pipeStdout($PATH)'
@@ -89,65 +121,78 @@ rules:
               - pattern: '$WRAPPER($FS.readFileSync)($PATH, ...)'
               - pattern: '$PKG.readPackageSync({cwd: $PATH, ...})'
               - pattern: '$PKG.readPackageAsync({cwd: $PATH, ...})'
-              - pattern: mkdirp($PATH, ...)
-              - pattern: $LIB.mkdirp($PATH, ...)
-              - pattern: $LIB.mkdirpSync($PATH, ...)
-              - pattern: $LIB.sync($PATH, ...)
-              - pattern: $LIB.native($PATH, ...)
-              - pattern: $LIB.nativeSync($PATH, ...)
-              - pattern: $LIB.manual($PATH, ...)
-              - pattern: $LIB.manualSync($PATH, ...)
-              - pattern: $LIB.windows($PATH, ...)
-              - pattern: $LIB.windowsSync($PATH, ...)
-              - pattern: $LIB.moveRemove($PATH, ...)
-              - pattern: $LIB.moveRemoveSync($PATH, ...)
-              - pattern: $LIB.posix($PATH, ...)
-              - pattern: $LIB.posixSync($PATH, ...)
-              - pattern: $LIB.$GROUP.sync($PATH, ...)
-              - pattern: $LIB.mkdirpNative($PATH, ...)
-              - pattern: $LIB.mkdirpNativeSync($PATH, ...)
-              - pattern: $LIB.mkdirpManual($PATH, ...)
-              - pattern: $LIB.mkdirpManualSync($PATH, ...)
-              - pattern: $LIB.rimrafSync($PATH, ...)
-              - pattern: makeDirectory($PATH, ...)
-              - pattern: makeDirectorySync($PATH, ...)
-              - pattern: open($PATH, ...)
-              - pattern: openApp($PATH, ...)
-              - pattern: chownr($PATH, ...)
-              - pattern: $LIB.mkdirs($PATH, ...)
-              - pattern: $LIB.mkdirsSync($PATH, ...)
-              - pattern: $LIB.ensureDir($PATH, ...)
-              - pattern: $LIB.ensureDirSync($PATH, ...)
-              - pattern: $LIB.ensureFile($PATH, ...)
-              - pattern: $LIB.ensureFileSync($PATH, ...)
-              - pattern: $LIB.remove($PATH, ...)
-              - pattern: $LIB.removeSync($PATH, ...)
-              - pattern: $LIB.emptyDir($PATH, ...)
-              - pattern: $LIB.emptyDirSync($PATH, ...)
-              - pattern: $LIB.emptydir($PATH, ...)
-              - pattern: $LIB.emptydirSync($PATH, ...)
-              - pattern: $LIB.copy($PATH, ...)
-              - pattern: $LIB.copySync($PATH, ...)
-              - pattern: $LIB.move($PATH, ...)
-              - pattern: $LIB.moveSync($PATH, ...)
-              - pattern: $LIB.outputFile($PATH, ...)
-              - pattern: $LIB.outputFileSync($PATH, ...)
-              - pattern: $LIB.outputJson($PATH, ...)
-              - pattern: $LIB.outputJsonSync($PATH, ...)
-              - pattern: $LIB.readJson($PATH, ...)
-              - pattern: $LIB.readJsonSync($PATH, ...)
-              - pattern: $LIB.writeJson($PATH, ...)
-              - pattern: $LIB.writeJsonSync($PATH, ...)
-              - pattern: $LIB.pathExists($PATH, ...)
-              - pattern: $LIB.pathExistsSync($PATH, ...)
-              - pattern: $LIB.createFile($PATH, ...)
-              - pattern: $LIB.createFileSync($PATH, ...)
-              - pattern: $LIB.createLink($PATH, ...)
-              - pattern: $LIB.createLinkSync($PATH, ...)
-              - pattern: $LIB.createSymlink($PATH, ...)
-              - pattern: $LIB.createSymlinkSync($PATH, ...)
-              - pattern: $LIB.open($PATH, ...)
-              - pattern: $LIB.openSync($PATH, ...)
+              - patterns:
+                  - pattern-either:
+                      - pattern: $LIB($PATH, ...)
+                      - pattern: $LIB.sync($PATH, ...)
+                      - pattern: $LIB.native.sync($PATH, ...)
+                      - pattern: $LIB.manual.sync($PATH, ...)
+                      - pattern: $LIB.windows.sync($PATH, ...)
+                      - pattern: $LIB.moveRemove.sync($PATH, ...)
+                      - pattern: $LIB.posix.sync($PATH, ...)
+                      - pattern: $LIB.mkdirpSync($PATH, ...)
+                      - pattern: $LIB.mkdirpNative($PATH, ...)
+                      - pattern: $LIB.mkdirpNativeSync($PATH, ...)
+                      - pattern: $LIB.mkdirpManual($PATH, ...)
+                      - pattern: $LIB.mkdirpManualSync($PATH, ...)
+                      - pattern: $LIB.rimrafSync($PATH, ...)
+                      - pattern: $LIB.native($PATH, ...)
+                      - pattern: $LIB.nativeSync($PATH, ...)
+                      - pattern: $LIB.manual($PATH, ...)
+                      - pattern: $LIB.manualSync($PATH, ...)
+                      - pattern: $LIB.windows($PATH, ...)
+                      - pattern: $LIB.windowsSync($PATH, ...)
+                      - pattern: $LIB.moveRemove($PATH, ...)
+                      - pattern: $LIB.moveRemoveSync($PATH, ...)
+                      - pattern: $LIB.posix($PATH, ...)
+                      - pattern: $LIB.posixSync($PATH, ...)
+                      - pattern: $LIB.mkdirs($PATH, ...)
+                      - pattern: $LIB.mkdirsSync($PATH, ...)
+                      - pattern: $LIB.ensureDir($PATH, ...)
+                      - pattern: $LIB.ensureDirSync($PATH, ...)
+                      - pattern: $LIB.ensureFile($PATH, ...)
+                      - pattern: $LIB.ensureFileSync($PATH, ...)
+                      - pattern: $LIB.remove($PATH, ...)
+                      - pattern: $LIB.removeSync($PATH, ...)
+                      - pattern: $LIB.emptyDir($PATH, ...)
+                      - pattern: $LIB.emptyDirSync($PATH, ...)
+                      - pattern: $LIB.emptydir($PATH, ...)
+                      - pattern: $LIB.emptydirSync($PATH, ...)
+                      - pattern: $LIB.copy($PATH, ...)
+                      - pattern: $LIB.copySync($PATH, ...)
+                      - pattern: $LIB.move($PATH, ...)
+                      - pattern: $LIB.moveSync($PATH, ...)
+                      - pattern: $LIB.outputFile($PATH, ...)
+                      - pattern: $LIB.outputFileSync($PATH, ...)
+                      - pattern: $LIB.outputJson($PATH, ...)
+                      - pattern: $LIB.outputJsonSync($PATH, ...)
+                      - pattern: $LIB.readJson($PATH, ...)
+                      - pattern: $LIB.readJsonSync($PATH, ...)
+                      - pattern: $LIB.writeJson($PATH, ...)
+                      - pattern: $LIB.writeJsonSync($PATH, ...)
+                      - pattern: $LIB.pathExists($PATH, ...)
+                      - pattern: $LIB.pathExistsSync($PATH, ...)
+                      - pattern: $LIB.createFile($PATH, ...)
+                      - pattern: $LIB.createFileSync($PATH, ...)
+                      - pattern: $LIB.createLink($PATH, ...)
+                      - pattern: $LIB.createLinkSync($PATH, ...)
+                      - pattern: $LIB.createSymlink($PATH, ...)
+                      - pattern: $LIB.createSymlinkSync($PATH, ...)
+                      - pattern: $LIB.open($PATH, ...)
+                      - pattern: $LIB.openSync($PATH, ...)
+                  - pattern-either:
+                      - pattern-inside: |
+                          $LIB = require("mkdirp")
+                          ...
+                      - pattern-inside: |
+                          $LIB = require('rimraf')
+                          ...
+                      - pattern-inside: |
+                          $LIB = require('fs-extra')
+                          ...
+              - pattern: $RES.sendFile($PATH, ...)
+              - pattern: $RES.sendfile($PATH, ...)
+              - pattern: $RES.download($PATH, ...)
           - pattern-not: '$RES.sendFile($PATH, { root: process.cwd(), ... })'
           - pattern-not: '$RES.sendfile($PATH, { root: process.cwd(), ... })'
           - pattern-not: '$RES.download($PATH, { root: process.cwd(), ... })'
@@ -232,30 +277,13 @@ rules:
         by-side-effect: true
       - patterns:
           - pattern-inside: |
-              $VALUE = $PATHMOD.normalize(...);
+              $VALUE = $RECEIVER.$METHOD(...);
               ...
+          - metavariable-regex:
+              metavariable: $METHOD
+              regex: '^(normalize|join|realpathSync)$'
           - pattern: |
-              if ($VALUE.startsWith("/home/user/www")) {
-                ...
-              }
-          - focus-metavariable: $VALUE
-        by-side-effect: true
-      - patterns:
-          - pattern-inside: |
-              $VALUE = $PATHMOD.join('/home/user/www', ...);
-              ...
-          - pattern: |
-              if ($VALUE.startsWith('/home/user/www')) {
-                ...
-              }
-          - focus-metavariable: $VALUE
-        by-side-effect: true
-      - patterns:
-          - pattern-inside: |
-              $VALUE = $FS.realpathSync(...);
-              ...
-          - pattern: |
-              if ($VALUE.startsWith("/home/user/www")) {
+              if ($VALUE.startsWith(...)) {
                 ...
               }
           - focus-metavariable: $VALUE
@@ -263,16 +291,6 @@ rules:
       - patterns:
           - pattern: |
               if (isPathInside($VALUE, ...)) {
-                ...
-              }
-          - focus-metavariable: $VALUE
-        by-side-effect: true
-      - patterns:
-          - pattern-inside: |
-              $VALUE = $PATHMOD.join($ROOT, ...);
-              ...
-          - pattern: |
-              if (pathIsInside($VALUE, $ROOT)) {
                 ...
               }
           - focus-metavariable: $VALUE

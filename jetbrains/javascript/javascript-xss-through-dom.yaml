@@ -1,99 +1,111 @@
 rules:
-- id: benchmark-xss-through-dom
-  message: DOM text is reinterpreted as HTML.
-  languages:
-  - javascript
-  - typescript
-  severity: ERROR
-  mode: taint
-  pattern-sources:
-  - pattern-either:
-    - pattern: $($SEL).val()
-    - pattern: $($SEL).text()
-    - pattern: $($SEL).attr($NAME)
-    - pattern: $($SEL).prop("innerText")
-    - pattern: $($SEL).prop('innerText')
-    - pattern: $($SEL).get(0).name
-    - pattern: $($SEL).get(0).getAttribute($NAME)
-    - pattern: $($SEL)[0].value
-    - pattern: $($SEL)[0].name
-    - pattern: $($SEL).find($FINDER)[0].value
-    - pattern: $($SEL).find($FINDER)[$IDX].value
-    - pattern: $(document).find($FINDER).attr($NAME)
-    - pattern: document.getElementById($ID).innerText
-    - pattern: document.getElementById($ID).textContent
-    - pattern: document.getElementById($ID).src
-    - pattern: document.getElementById($ID).value
-    - pattern: document.getElementById($ID).getAttribute($NAME)
-    - pattern: document.querySelectorAll($SEL)[0].value
-    - pattern: document.my_form.my_input.value
-    - pattern: $EVENT.target.value
-    - pattern: $TARGET.value
-    - pattern: $EVENT.target.files
-    - pattern: $EVENT.target.files[0].name
-    - pattern: URL.createObjectURL($EVENT.target.files[0])
-    - pattern: getSelection().toString()
-    - pattern: document.getSelection().toString()
-    - pattern: useFormikContext()
-    - pattern: getValues()
-  - patterns:
-    - pattern-either:
-      - pattern: 'validate: $VALUES => { ... }'
-      - pattern: 'onSubmit: ($VALUES, ...) => { ... }'
-      - pattern: 'handleSubmit: ($VALUES, ...) => { ... }'
-      - pattern: 'render: ({ ..., $VALUES, ... }) => (...)'
-      - pattern: '$FORM.addEventListener("submit", $EVENT => { ... })'
-      - pattern: '$FORM.addEventListener("submit", function($EVENT) { ... })'
-      - pattern: '$FORM.onsubmit = function($EVENT) { ... }'
-    - focus-metavariable: $VALUES
-  pattern-sinks:
-  - patterns:
-    - pattern-either:
-      - pattern: $($EL).html($VALUE, ...)
-      - pattern: $EL.html($VALUE, ...)
-      - pattern: $($EL).get(0).innerHTML = $VALUE
-      - pattern: $EL.innerHTML = $VALUE
-      - pattern: document.write($VALUE, ...)
-      - pattern: $($VALUE)
-      - pattern: $.jGrowl($VALUE, ...)
-      - pattern: $CASH($EL).html($VALUE, ...)
-      - pattern: '$($TAG, { html: $VALUE, ... }).appendTo(...)'
-    - focus-metavariable: $VALUE
-  pattern-propagators:
-  - pattern: $TO = $FROM
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $FROM.$FIELD
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $FROM[$IDX]
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $FROM || $OTHER
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $OTHER || $FROM
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $FROM + $OTHER
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $OTHER + $FROM
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $FROM.$METHOD(...)
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $METHOD($FROM, ...)
-    from: $FROM
-    to: $TO
-  - pattern: $TO = new $CLASS($FROM, ...)
-    from: $FROM
-    to: $TO
-  - pattern: $OBJ.$METHOD($FROM, ...)
-    from: $FROM
-    to: $OBJ
-  pattern-sanitizers:
-  - pattern-either:
-    - pattern: DOMPurify.sanitize(...)
-    - pattern: $DOMPURIFY.sanitize(...)
+  - id: javascript-xss-through-dom
+    metadata:
+      category: security
+      cwe:
+        - "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp:
+        - "A07:2017 - Cross-Site Scripting (XSS)"
+        - "A03:2021 - Injection"
+        - "A05:2025 - Injection"
+    message: DOM text is reinterpreted as HTML.
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR
+    mode: taint
+
+    pattern-sources:
+      - pattern-either:
+          - pattern: $($SEL).val()
+          - pattern: $($SEL).text()
+          - pattern: $($SEL).attr($NAME)
+          - pattern: $($SEL).prop("innerText")
+          - pattern: $($SEL).prop('innerText')
+          - pattern: $($SEL).get(0).name
+          - pattern: $($SEL).get(0).getAttribute($NAME)
+          - pattern: $($SEL)[0].value
+          - pattern: $($SEL)[0].name
+          - pattern: $($SEL).find($FINDER)[0].value
+          - pattern: $($SEL).find($FINDER)[$IDX].value
+          - pattern: $(document).find($FINDER).attr($NAME)
+          - pattern: document.getElementById($ID).innerText
+          - pattern: document.getElementById($ID).textContent
+          - pattern: document.getElementById($ID).src
+          - pattern: document.getElementById($ID).value
+          - pattern: document.getElementById($ID).getAttribute($NAME)
+          - pattern: document.querySelectorAll($SEL)[0].value
+          - pattern: document.my_form.my_input.value
+          - pattern: $EVENT.target.value
+          - pattern: $TARGET.value
+          - pattern: $EVENT.target.files
+          - pattern: $EVENT.target.files[0].name
+          - pattern: URL.createObjectURL($EVENT.target.files[0])
+          - pattern: getSelection().toString()
+          - pattern: document.getSelection().toString()
+          - pattern: useFormikContext()
+          - pattern: getValues()
+      - patterns:
+          - pattern-either:
+              - pattern: 'validate: $VALUES => { ... }'
+              - pattern: 'onSubmit: ($VALUES, ...) => { ... }'
+              - pattern: 'handleSubmit: ($VALUES, ...) => { ... }'
+              - pattern: 'render: ({ ..., $VALUES, ... }) => (...)'
+              - pattern: '$FORM.addEventListener("submit", $EVENT => { ... })'
+              - pattern: '$FORM.addEventListener("submit", function($EVENT) { ... })'
+              - pattern: '$FORM.onsubmit = function($EVENT) { ... }'
+          - focus-metavariable: $VALUES
+
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $($EL).html($VALUE, ...)
+              - pattern: $EL.html($VALUE, ...)
+              - pattern: $($EL).get(0).innerHTML = $VALUE
+              - pattern: $EL.innerHTML = $VALUE
+              - pattern: document.write($VALUE, ...)
+              - pattern: $($VALUE)
+              - pattern: $.jGrowl($VALUE, ...)
+              - pattern: $CASH($EL).html($VALUE, ...)
+              - pattern: '$($TAG, { html: $VALUE, ... }).appendTo(...)'
+          - focus-metavariable: $VALUE
+
+    pattern-propagators:
+      - pattern: $TO = $FROM
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $FROM.$FIELD
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $FROM[$IDX]
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $FROM || $OTHER
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $OTHER || $FROM
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $FROM + $OTHER
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $OTHER + $FROM
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $FROM.$METHOD(...)
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $METHOD($FROM, ...)
+        from: $FROM
+        to: $TO
+      - pattern: $TO = new $CLASS($FROM, ...)
+        from: $FROM
+        to: $TO
+      - pattern: $OBJ.$METHOD($FROM, ...)
+        from: $FROM
+        to: $OBJ
+
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: DOMPurify.sanitize(...)
+          - pattern: $DOMPURIFY.sanitize(...)

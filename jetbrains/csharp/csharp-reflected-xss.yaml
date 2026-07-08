@@ -1,0 +1,43 @@
+rules:
+  - id: csharp-reflected-xss
+    metadata:
+      category: security
+      cwe:
+        - "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp:
+        - "A07:2017 - Cross-Site Scripting (XSS)"
+        - "A03:2021 - Injection"
+        - "A05:2025 - Injection"
+    languages: [ csharp ]
+    severity: ERROR
+    message: >-
+      User-controlled input from the HTTP request reaches the HTML output, resulting in reflected XSS vulnerability
+    mode: taint
+
+    pattern-sources:
+      - pattern-either:
+          - pattern: $REQ.QueryString[$KEY]
+          - pattern: $REQ.Query[$KEY]
+          - pattern: $REQ.QueryString.Value
+          - pattern: $REQ.Query
+          - pattern: $REQ.ContentType
+          - pattern: $REQ.Headers[$KEY]
+          - patterns:
+              - pattern: $TYPE $METHOD([FromQuery] string $VALUE, ...) { ... }
+              - focus-metavariable: $VALUE
+
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: Write($VALUE)
+              - pattern: WriteLiteral($VALUE)
+              - pattern: WriteLiteralTo($OUT, $VALUE)
+              - pattern: Html.Raw($VALUE)
+              - pattern: new HtmlString($VALUE)
+              - pattern: 'new HtmlString($ANY: $VALUE)'
+          - focus-metavariable: $VALUE
+
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: Html.Encode(...)
+          - pattern: $ENCODER.HtmlEncode(...)

@@ -1,23 +1,59 @@
 rules:
-  - id: csharp-codeql-xpath-injection
+  - id: csharp-xpath-injection
+    metadata:
+      category: security
+      cwe:
+        - "CWE-643: Improper Neutralization of Data within XPath Expressions ('XPath Injection')"
+      owasp:
+        - "A01:2017 - Injection"
+        - "A03:2021 - Injection"
+        - "A05:2025 - Injection"
     languages: [ csharp ]
     severity: ERROR
-    message: Tainted data reaches an XPath expression
+    message: >-
+      User-controlled input from the HTTP query or database reaches an XPath expression,
+      leading to an XPath injection vulnerability
     mode: taint
 
     pattern-sources:
       - pattern-either:
-          - pattern: $CTX.Request.QueryString[$KEY]
-          - pattern: $COMMAND.ExecuteReader()
+          - patterns:
+              - pattern: $CTX.Request.QueryString[$KEY]
+              - metavariable-type:
+                  metavariable: $CTX
+                  type: HttpContext
+          - patterns:
+              - pattern: $CMD.ExecuteReader()
+              - pattern-either:
+                  - pattern-inside: |
+                      SqlCommand $CMD = new SqlCommand(...);
+                      ...
+                  - pattern-inside: |
+                      var $CMD = new SqlCommand(...);
+                      ...
 
     pattern-sinks:
       - patterns:
           - pattern-either:
+              - patterns:
+                  - pattern: $XML.SelectNodes($QUERY)
+                  - metavariable-type:
+                      metavariable: $XML
+                      type: XmlNode
               - pattern: XPathExpression.Compile($QUERY)
-              - pattern: $XML.SelectNodes($QUERY)
-              - pattern: $NAV.Select($QUERY)
-              - pattern: $NAV.SelectSingleNode($QUERY)
-              - pattern: $NAV.Compile($QUERY)
-              - pattern: $NAV.Evaluate($QUERY)
-              - pattern: $NAV.Matches($QUERY)
+              - patterns:
+                  - pattern-either:
+                      - pattern: $NAV.Select($QUERY)
+                      - pattern: $NAV.SelectSingleNode($QUERY)
+                      - pattern: $NAV.Compile($QUERY)
+                      - pattern: $NAV.Evaluate($QUERY)
+                      - pattern: $NAV.Matches($QUERY)
+                  - pattern-inside: |
+                      $TYPE $FUNCTION(...) {
+                        ...
+                        var $DOC = new XPathDocument(...);
+                        ...
+                        var $NAV = $DOC.CreateNavigator();
+                        ...
+                      }
           - focus-metavariable: $QUERY

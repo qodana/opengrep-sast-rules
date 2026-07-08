@@ -1,145 +1,157 @@
 rules:
-- id: benchmark-reflected-xss
-  message: User-controlled input reaches an HTML response.
-  languages:
-  - javascript
-  - typescript
-  severity: ERROR
-  mode: taint
-  pattern-sources:
-  - pattern-either:
-    - pattern: $REQ.body
-    - pattern: $REQ.body.$KEY
-    - pattern: $REQ.query
-    - pattern: $REQ.query.$KEY
-    - pattern: $REQ.query[$KEY]
-    - pattern: $REQ.params
-    - pattern: $REQ.params.$KEY
-    - pattern: $REQ.params[$KEY]
-    - pattern: $REQ.url
-    - pattern: $REQ.json()
-    - pattern: $REQUEST.query
-    - pattern: $REQUEST.query.$KEY
-  - patterns:
-    - pattern-either:
-      - pattern: let { $VALUE } = $REQ.params
-      - pattern: const { $VALUE } = $REQ.params
-      - pattern: 'let { $KEY: $VALUE } = $REQ.params'
-      - pattern: 'const { $KEY: $VALUE } = $REQ.params'
-      - pattern: 'const { keys: $VALUE } = $REQ.query'
-      - pattern: $PROCESS.process($INPUT, function ($ERR, $VALUE) { ... })
-      - pattern: $PROCESS.process($INPUT, ($ERR, $VALUE) => { ... })
-    - focus-metavariable: $VALUE
-  pattern-sinks:
-  - patterns:
-    - pattern-either:
-      - pattern: $RES.send($VALUE, ...)
-      - pattern: $RES.end($VALUE, ...)
-      - pattern: $RES.write($VALUE, ...)
-      - pattern: new Response($VALUE)
-      - pattern: new Response($VALUE, {})
-      - pattern: 'new Response($VALUE, { headers: null, ... })'
-      - pattern: 'new Response($VALUE, { headers: { "content-type": "text/html", ... }, ... })'
-      - pattern: "new Response($VALUE, { headers: { 'content-type': 'text/html', ... }, ... })"
-      - pattern: 'new Response($VALUE, { headers: { "Content-Type": "text/html", ... }, ... })'
-      - pattern: "new Response($VALUE, { headers: { 'Content-Type': 'text/html', ... }, ... })"
-      - pattern: 'new Response($VALUE, { headers: headers2, ... })'
-      - pattern: 'new Response($VALUE, { headers: headers3, ... })'
-      - pattern: 'new Response($VALUE, { headers: headers5, ... })'
-      - pattern: 'new Response($VALUE, { headers: headers6, ... })'
-      - pattern: 'new Response($VALUE, { headers, ... })'
-      - pattern: new NextResponse($VALUE)
-      - pattern: new NextResponse($VALUE, {})
-      - pattern: 'new NextResponse($VALUE, { headers: null, ... })'
-      - pattern: 'new NextResponse($VALUE, { headers: { "content-type": "text/html", ... }, ... })'
-      - pattern: "new NextResponse($VALUE, { headers: { 'content-type': 'text/html', ... }, ... })"
-      - pattern: 'new NextResponse($VALUE, { headers: { "Content-Type": "text/html", ... }, ... })'
-      - pattern: "new NextResponse($VALUE, { headers: { 'Content-Type': 'text/html', ... }, ... })"
-      - pattern: 'new NextResponse($VALUE, { headers: headers3, ... })'
-      - pattern: 'new NextResponse($VALUE, { headers: headers5, ... })'
-      - pattern: 'new NextResponse($VALUE, { headers, ... })'
-    - pattern-not-inside: |
-        $RES.set('Content-Type', 'text/plain');
-        ...
-    - pattern-not-inside: |
-        $RES.set("Content-Type", "text/plain");
-        ...
-    - pattern-not-inside: |
-        $RES.set('Content-Type', textContentType());
-        ...
-    - pattern-not-inside: |
-        $RES.setHeader('Content-Type', 'application/json');
-        ...
-    - pattern-not-inside: |
-        $RES.writeHead($CODE, {'Content-Type': 'application/json'});
-        ...
-    - pattern-not-inside: |
-        $RES.writeHead($CODE, {"Content-Type": "application/json"});
-        ...
-    - pattern-not-inside: |
-        $RES.writeHead($CODE, {"content-type": "text/plain; charset=utf-8"});
-        ...
-    - focus-metavariable: $VALUE
-  - patterns:
-    - pattern: 'handler: function ($REQUEST) { ... return $VALUE; ... }'
-    - focus-metavariable: $VALUE
-  pattern-propagators:
-  - pattern: $TO = $FROM
-    from: $FROM
-    to: $TO
-  - pattern: $TO = await $FROM
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $FROM.$FIELD
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $FROM[$KEY]
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $FROM + $OTHER
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $OTHER + $FROM
-    from: $FROM
-    to: $TO
-  - pattern: $TO = `${$FROM}`
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $FROM.$METHOD(...)
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $METHOD($FROM, ...)
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $METHOD(..., $FROM, ...)
-    from: $FROM
-    to: $TO
-  - pattern: $TO = new $CLASS($FROM, ...)
-    from: $FROM
-    to: $TO
-  - pattern: $TO = [$FROM, ...]
-    from: $FROM
-    to: $TO
-  - pattern: '$TO = { ..., $KEY: $FROM, ... }'
-    from: $FROM
-    to: $TO
-  - pattern: $TO.$FIELD = $FROM
-    from: $FROM
-    to: $TO
-  - pattern: $TO.push($FROM)
-    from: $FROM
-    to: $TO
-  pattern-sanitizers:
-  - pattern-either:
-    - pattern: escapeHtml(...)
-    - pattern: escape(...)
-    - pattern: escapeHtml1(...)
-    - pattern: escapeHtml2(...)
-    - pattern: escapeHtml4(...)
-    - pattern: encodeURI(...)
-    - pattern: encodeURIComponent(...)
-    - pattern: $MARKDOWN.use(require('markdown-it-sanitizer')).render(...)
-    - pattern: $MARKDOWN.use(require("markdown-it-sanitizer")).render(...)
-    - pattern: markdownIt2.render(...)
-    - pattern: $REQ.cookies[$KEY]
-    - pattern: $REMARK.use(sanitize).processSync(...)
+  - id: javascript-reflected-xss
+    metadata:
+      category: security
+      cwe:
+        - "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp:
+        - "A07:2017 - Cross-Site Scripting (XSS)"
+        - "A03:2021 - Injection"
+        - "A05:2025 - Injection"
+    message: User-controlled input reaches an HTML response.
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR
+    mode: taint
+
+    pattern-sources:
+      - pattern-either:
+          - pattern: $REQ.body
+          - pattern: $REQ.body.$KEY
+          - pattern: $REQ.query
+          - pattern: $REQ.query.$KEY
+          - pattern: $REQ.query[$KEY]
+          - pattern: $REQ.params
+          - pattern: $REQ.params.$KEY
+          - pattern: $REQ.params[$KEY]
+          - pattern: $REQ.url
+          - pattern: $REQ.json()
+          - pattern: $REQUEST.query
+          - pattern: $REQUEST.query.$KEY
+      - patterns:
+          - pattern-either:
+              - pattern: let { $VALUE } = $REQ.params
+              - pattern: const { $VALUE } = $REQ.params
+              - pattern: 'let { $KEY: $VALUE } = $REQ.params'
+              - pattern: 'const { $KEY: $VALUE } = $REQ.params'
+              - pattern: 'const { keys: $VALUE } = $REQ.query'
+              - pattern: $PROCESS.process($INPUT, function ($ERR, $VALUE) { ... })
+              - pattern: $PROCESS.process($INPUT, ($ERR, $VALUE) => { ... })
+          - focus-metavariable: $VALUE
+
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $RES.send($VALUE, ...)
+              - pattern: $RES.end($VALUE, ...)
+              - pattern: $RES.write($VALUE, ...)
+              - pattern: new Response($VALUE)
+              - pattern: new Response($VALUE, {})
+              - pattern: 'new Response($VALUE, { headers: null, ... })'
+              - pattern: 'new Response($VALUE, { headers: { "content-type": "text/html", ... }, ... })'
+              - pattern: "new Response($VALUE, { headers: { 'content-type': 'text/html', ... }, ... })"
+              - pattern: 'new Response($VALUE, { headers: { "Content-Type": "text/html", ... }, ... })'
+              - pattern: "new Response($VALUE, { headers: { 'Content-Type': 'text/html', ... }, ... })"
+              - pattern: 'new Response($VALUE, { headers: headers2, ... })'
+              - pattern: 'new Response($VALUE, { headers: headers3, ... })'
+              - pattern: 'new Response($VALUE, { headers: headers5, ... })'
+              - pattern: 'new Response($VALUE, { headers: headers6, ... })'
+              - pattern: 'new Response($VALUE, { headers, ... })'
+              - pattern: new NextResponse($VALUE)
+              - pattern: new NextResponse($VALUE, {})
+              - pattern: 'new NextResponse($VALUE, { headers: null, ... })'
+              - pattern: 'new NextResponse($VALUE, { headers: { "content-type": "text/html", ... }, ... })'
+              - pattern: "new NextResponse($VALUE, { headers: { 'content-type': 'text/html', ... }, ... })"
+              - pattern: 'new NextResponse($VALUE, { headers: { "Content-Type": "text/html", ... }, ... })'
+              - pattern: "new NextResponse($VALUE, { headers: { 'Content-Type': 'text/html', ... }, ... })"
+              - pattern: 'new NextResponse($VALUE, { headers: headers3, ... })'
+              - pattern: 'new NextResponse($VALUE, { headers: headers5, ... })'
+              - pattern: 'new NextResponse($VALUE, { headers, ... })'
+          - pattern-not-inside: |
+              $RES.set('Content-Type', 'text/plain');
+              ...
+          - pattern-not-inside: |
+              $RES.set("Content-Type", "text/plain");
+              ...
+          - pattern-not-inside: |
+              $RES.set('Content-Type', textContentType());
+              ...
+          - pattern-not-inside: |
+              $RES.setHeader('Content-Type', 'application/json');
+              ...
+          - pattern-not-inside: |
+              $RES.writeHead($CODE, {'Content-Type': 'application/json'});
+              ...
+          - pattern-not-inside: |
+              $RES.writeHead($CODE, {"Content-Type": "application/json"});
+              ...
+          - pattern-not-inside: |
+              $RES.writeHead($CODE, {"content-type": "text/plain; charset=utf-8"});
+              ...
+          - focus-metavariable: $VALUE
+      - patterns:
+          - pattern: 'handler: function ($REQUEST) { ... return $VALUE; ... }'
+          - focus-metavariable: $VALUE
+
+    pattern-propagators:
+      - pattern: $TO = $FROM
+        from: $FROM
+        to: $TO
+      - pattern: $TO = await $FROM
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $FROM.$FIELD
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $FROM[$KEY]
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $FROM + $OTHER
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $OTHER + $FROM
+        from: $FROM
+        to: $TO
+      - pattern: $TO = `${$FROM}`
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $FROM.$METHOD(...)
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $METHOD($FROM, ...)
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $METHOD(..., $FROM, ...)
+        from: $FROM
+        to: $TO
+      - pattern: $TO = new $CLASS($FROM, ...)
+        from: $FROM
+        to: $TO
+      - pattern: $TO = [$FROM, ...]
+        from: $FROM
+        to: $TO
+      - pattern: '$TO = { ..., $KEY: $FROM, ... }'
+        from: $FROM
+        to: $TO
+      - pattern: $TO.$FIELD = $FROM
+        from: $FROM
+        to: $TO
+      - pattern: $TO.push($FROM)
+        from: $FROM
+        to: $TO
+
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: escapeHtml(...)
+          - pattern: escape(...)
+          - pattern: escapeHtml1(...)
+          - pattern: escapeHtml2(...)
+          - pattern: escapeHtml4(...)
+          - pattern: encodeURI(...)
+          - pattern: encodeURIComponent(...)
+          - pattern: $MARKDOWN.use(require('markdown-it-sanitizer')).render(...)
+          - pattern: $MARKDOWN.use(require("markdown-it-sanitizer")).render(...)
+          - pattern: markdownIt2.render(...)
+          - pattern: $REQ.cookies[$KEY]
+          - pattern: $REMARK.use(sanitize).processSync(...)

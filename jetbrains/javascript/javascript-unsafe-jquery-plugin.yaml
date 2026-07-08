@@ -1,83 +1,94 @@
 rules:
-- id: benchmark-unsafe-jquery-plugin
-  message: jQuery plugin option data reaches a selector sink.
-  languages:
-  - javascript
-  - typescript
-  severity: ERROR
-  mode: taint
-  pattern-sources:
-  - patterns:
-    - pattern-either:
-      - pattern: function my_plugin($OPTIONS) { ... }
-      - pattern: function my_plugin($ELEMENT, $OPTIONS) { ... }
-      - pattern: function($OPTIONS) { ... }
-      - pattern: function($ELEMENT, $OPTIONS) { ... }
-      - pattern: 'setupPlugin({f: function($OPTIONS) { ... }})'
-    - focus-metavariable: $OPTIONS
-  pattern-sinks:
-  - patterns:
-    - pattern-either:
-      - pattern: $($VALUE)
-      - pattern: $($ELEMENT).appendTo($VALUE)
-    - focus-metavariable: $VALUE
-    - pattern-not: $(options.html)
-    - pattern-not: $(options.menu)
-    - pattern-not: $('#'+ $VALUE)
-    - pattern-not: $("#" + $VALUE)
-    - pattern-not: $("#" + options.target)
-    - pattern-not: $(intentional1)
-    - pattern-not: $(intentional2)
-    - pattern-not: $(intentional3)
-    - pattern-not: $(unintentional)
-    - pattern-not: $(anyPrefix + $VALUE)
-    - pattern-not: $(anyPrefix + options.target)
-    - pattern-not: $(something.replace("%PLACEHOLDER%", $VALUE))
-    - pattern-not: $(something.replace("%PLACEHOLDER%", options.target))
-    - pattern-not: $($PREFIX + $VALUE)
-    - pattern-not: $(something.replace(..., $VALUE))
-    - pattern-not-inside: |
-        function my_plugin(options) {
-          let intentional1 = ...;
-          ...
-        }
-    - pattern-not-inside: |
-        $VALUE === DEFAULTS.target? $($VALUE): ...
-    - pattern-not-inside: |
-        if (isElement($VALUE)) {
-          ...
-        }
-    - pattern-not-inside: |
-        if (typeof $VALUE != "string") {
-          ...
-        }
-    - pattern-not-inside: |
-        if ($VALUE.jquery !== undefined) {
-          ...
-        }
-    - pattern-not-inside: |
-        if (typeof $VALUE.jquery !== "undefined") {
-          ...
-        }
-    - pattern-not-inside: |
-        if ($VALUE.jquery) {
-          ...
-        }
-    - pattern-not-inside: |
-        if (!!$VALUE.jquery) {
-          ...
-        }
-    - pattern-not-inside: |
-        if (safe.has($VALUE))
-          ...
-    - pattern-not-inside: |
-        if ($VALUE.foo) {
-          ...
-        }
-  pattern-propagators:
-  - pattern: $TO = $FROM
-    from: $FROM
-    to: $TO
-  - pattern: $TO = $.extend(..., $FROM)
-    from: $FROM
-    to: $TO
+  - id: javascript-unsafe-jquery-plugin
+    metadata:
+      category: security
+      cwe:
+        - "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp:
+        - "A07:2017 - Cross-Site Scripting (XSS)"
+        - "A03:2021 - Injection"
+        - "A05:2025 - Injection"
+    message: jQuery plugin option data reaches a selector sink.
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR
+    mode: taint
+
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: function my_plugin($OPTIONS) { ... }
+              - pattern: function my_plugin($ELEMENT, $OPTIONS) { ... }
+              - pattern: function($OPTIONS) { ... }
+              - pattern: function($ELEMENT, $OPTIONS) { ... }
+              - pattern: 'setupPlugin({f: function($OPTIONS) { ... }})'
+          - focus-metavariable: $OPTIONS
+
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $($VALUE)
+              - pattern: $($ELEMENT).appendTo($VALUE)
+          - focus-metavariable: $VALUE
+          - pattern-not: $(options.html)
+          - pattern-not: $(options.menu)
+          - pattern-not: $('#'+ $VALUE)
+          - pattern-not: $("#" + $VALUE)
+          - pattern-not: $("#" + options.target)
+          - pattern-not: $(intentional1)
+          - pattern-not: $(intentional2)
+          - pattern-not: $(intentional3)
+          - pattern-not: $(unintentional)
+          - pattern-not: $(anyPrefix + $VALUE)
+          - pattern-not: $(anyPrefix + options.target)
+          - pattern-not: $(something.replace("%PLACEHOLDER%", $VALUE))
+          - pattern-not: $(something.replace("%PLACEHOLDER%", options.target))
+          - pattern-not: $($PREFIX + $VALUE)
+          - pattern-not: $(something.replace(..., $VALUE))
+          - pattern-not-inside: |
+              function my_plugin(options) {
+                let intentional1 = ...;
+                ...
+              }
+          - pattern-not-inside: |
+              $VALUE === DEFAULTS.target? $($VALUE): ...
+          - pattern-not-inside: |
+              if (isElement($VALUE)) {
+                ...
+              }
+          - pattern-not-inside: |
+              if (typeof $VALUE != "string") {
+                ...
+              }
+          - pattern-not-inside: |
+              if ($VALUE.jquery !== undefined) {
+                ...
+              }
+          - pattern-not-inside: |
+              if (typeof $VALUE.jquery !== "undefined") {
+                ...
+              }
+          - pattern-not-inside: |
+              if ($VALUE.jquery) {
+                ...
+              }
+          - pattern-not-inside: |
+              if (!!$VALUE.jquery) {
+                ...
+              }
+          - pattern-not-inside: |
+              if (safe.has($VALUE))
+                ...
+          - pattern-not-inside: |
+              if ($VALUE.foo) {
+                ...
+              }
+
+    pattern-propagators:
+      - pattern: $TO = $FROM
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $.extend(..., $FROM)
+        from: $FROM
+        to: $TO

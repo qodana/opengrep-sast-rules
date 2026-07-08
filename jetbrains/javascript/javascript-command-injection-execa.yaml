@@ -1,156 +1,159 @@
 rules:
-- id: command-injection-execa-library
-  message: >-
-    Detected user input flowing into execa command execution functions.
-    This could lead to a command injection vulnerability. The execa library executes
-    shell commands and can be vulnerable when user input is passed without validation.
-    Use proper input validation or avoid passing user input to command execution functions.
-  metadata:
-    cwe:
-    - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
-    owasp:
-    - A01:2017 - Injection
-    - A03:2021 - Injection
-    category: security
-    technology:
-    - javascript
-    - nodejs
-    - execa
-    references:
-    - https://owasp.org/www-community/attacks/Command_Injection
-    cwe2022-top25: true
-    cwe2021-top25: true
-    subcategory:
-    - vuln
-    likelihood: HIGH
-    impact: HIGH
-    confidence: MEDIUM
-  languages:
-  - javascript
-  - typescript
-  severity: ERROR
-  mode: taint
-  pattern-sources:
-  - patterns:
-    - pattern-either:
-      # HTTP request sources
-      - pattern: $REQ.query
-      - pattern: $REQ.query.$PARAM
-      - pattern: $REQ.query[$PARAM]
-      - pattern: $REQ.query.$PARAM[$IDX]
-      - pattern: $REQ.query[$PARAM][$IDX]
-      - pattern: url.parse($REQ.url, ...).query
-      - pattern: url.parse($REQ.url, ...).query.$PARAM
-      - pattern: url.parse($REQ.url, ...).query[$PARAM]
-      - pattern: url.parse($REQ.url, ...).query.$PARAM[$IDX]
-      - pattern: url.parse($REQ.url, ...).query[$PARAM][$IDX]
-      - pattern: $REQ.body
-      - pattern: $REQ.body.$PARAM
-      - pattern: $REQ.body[$PARAM]
-      - pattern: $REQ.params
-      - pattern: $REQ.params.$PARAM
-      - pattern: $REQ.params[$PARAM]
-      - pattern: $CTX.params
-      - pattern: $CTX.params.$PARAM
-      - pattern: $CTX.params[$PARAM]
-      - pattern: $CTX.query
-      - pattern: $CTX.query.$PARAM
-      - pattern: $CTX.query[$PARAM]
-      # Command line arguments
-      - pattern: process.argv
-      - pattern: process.argv[$IDX]
-      - pattern: process.argv.slice(...)
-      # GitHub Actions
-      - pattern: $GITHUB.context.payload.$PROP
-      - pattern: $GITHUB.context.payload.pull_request.$PROP
-      - pattern: $GITHUB.context.payload.pull_request.head.$PROP
-  pattern-sinks:
-  - patterns:
-    - pattern-either:
-      # execa
+  - id: javascript-command-injection-execa-library
+    message: >-
+      Detected user input flowing into execa command execution functions.
+      This could lead to a command injection vulnerability. The execa library executes
+      shell commands and can be vulnerable when user input is passed without validation.
+      Use proper input validation or avoid passing user input to command execution functions.
+    metadata:
+      cwe:
+        - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
+      owasp:
+        - "A01:2017 - Injection"
+        - "A03:2021 - Injection"
+        - "A05:2025 - Injection"
+      category: security
+      technology:
+        - javascript
+        - nodejs
+        - execa
+      references:
+        - https://owasp.org/www-community/attacks/Command_Injection
+      cwe2022-top25: true
+      cwe2021-top25: true
+      subcategory:
+        - vuln
+      likelihood: HIGH
+      impact: HIGH
+      confidence: MEDIUM
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR
+    mode: taint
+
+    pattern-sources:
       - patterns:
-        - pattern: execa($CMD, ...)
-        - focus-metavariable: $CMD
-      # execaSync
+          - pattern-either:
+              # HTTP request sources
+              - pattern: $REQ.query
+              - pattern: $REQ.query.$PARAM
+              - pattern: $REQ.query[$PARAM]
+              - pattern: $REQ.query.$PARAM[$IDX]
+              - pattern: $REQ.query[$PARAM][$IDX]
+              - pattern: url.parse($REQ.url, ...).query
+              - pattern: url.parse($REQ.url, ...).query.$PARAM
+              - pattern: url.parse($REQ.url, ...).query[$PARAM]
+              - pattern: url.parse($REQ.url, ...).query.$PARAM[$IDX]
+              - pattern: url.parse($REQ.url, ...).query[$PARAM][$IDX]
+              - pattern: $REQ.body
+              - pattern: $REQ.body.$PARAM
+              - pattern: $REQ.body[$PARAM]
+              - pattern: $REQ.params
+              - pattern: $REQ.params.$PARAM
+              - pattern: $REQ.params[$PARAM]
+              - pattern: $CTX.params
+              - pattern: $CTX.params.$PARAM
+              - pattern: $CTX.params[$PARAM]
+              - pattern: $CTX.query
+              - pattern: $CTX.query.$PARAM
+              - pattern: $CTX.query[$PARAM]
+              # Command line arguments
+              - pattern: process.argv
+              - pattern: process.argv[$IDX]
+              - pattern: process.argv.slice(...)
+              # GitHub Actions
+              - pattern: $GITHUB.context.payload.$PROP
+              - pattern: $GITHUB.context.payload.pull_request.$PROP
+              - pattern: $GITHUB.context.payload.pull_request.head.$PROP
+
+    pattern-sinks:
       - patterns:
-        - pattern: execaSync($CMD, ...)
-        - focus-metavariable: $CMD
-      # execaCommand
-      - patterns:
-        - pattern: execaCommand($CMD, ...)
-        - focus-metavariable: $CMD
-      # execaCommandSync
-      - patterns:
-        - pattern: execaCommandSync($CMD, ...)
-        - focus-metavariable: $CMD
-      # execa.shell and variants (when using require('execa'))
-      - patterns:
-        - pattern: require('execa').shell($CMD, ...)
-        - focus-metavariable: $CMD
-      - patterns:
-        - pattern: require('execa').shellSync($CMD, ...)
-        - focus-metavariable: $CMD
-      - patterns:
-        - pattern: require('execa').stdout($CMD, ...)
-        - focus-metavariable: $CMD
-      - patterns:
-        - pattern: require('execa').stderr($CMD, ...)
-        - focus-metavariable: $CMD
-      - patterns:
-        - pattern: require('execa').sync($CMD, ...)
-        - focus-metavariable: $CMD
-      - patterns:
-        - pattern: require('execa').node($CMD, ...)
-        - focus-metavariable: $CMD
-      - patterns:
-        - pattern: require('execa')($CMD, ...)
-        - focus-metavariable: $CMD
-      # $ template tag from execa - match when starts with interpolated var
-      - patterns:
-        - pattern-either:
-          - pattern: $`${$CMD}...`
-          - pattern: $`${$CMD} ...`
-        - focus-metavariable: $CMD
-      - patterns:
-        - pattern-either:
-          - pattern: $(...)`${$CMD}...`
-          - pattern: $(...)`${$CMD} ...`
-        - focus-metavariable: $CMD
-      - patterns:
-        - pattern-either:
-          - pattern: $(...).sync`${$CMD}...`
-          - pattern: $(...).sync`${$CMD} ...`
-        - focus-metavariable: $CMD
-      - patterns:
-        - pattern-either:
-          - pattern: $.sync`${$CMD}...`
-          - pattern: $.sync`${$CMD} ...`
-        - focus-metavariable: $CMD
-    - pattern-either:
-      - pattern-inside: |
-          import $X from 'execa'
-          ...
-      - pattern-inside: |
-          import { ... } from 'execa'
-          ...
-      - pattern-inside: |
-          import * as $X from 'execa'
-          ...
-      - pattern-inside: |
-          $X = require('execa')
-          ...
-      - pattern-inside: |
-          const $X = require('execa')
-          ...
-      - pattern-inside: |
-          var $X = require('execa')
-          ...
-      - pattern-inside: |
-          let $X = require('execa')
-          ...
-      - pattern-inside: |
-          const { ... } = require('execa')
-          ...
-      - pattern-inside: |
-          require('execa')
-          ...
+          - pattern-either:
+              # execa
+              - patterns:
+                  - pattern: execa($CMD, ...)
+                  - focus-metavariable: $CMD
+              # execaSync
+              - patterns:
+                  - pattern: execaSync($CMD, ...)
+                  - focus-metavariable: $CMD
+              # execaCommand
+              - patterns:
+                  - pattern: execaCommand($CMD, ...)
+                  - focus-metavariable: $CMD
+              # execaCommandSync
+              - patterns:
+                  - pattern: execaCommandSync($CMD, ...)
+                  - focus-metavariable: $CMD
+              # execa.shell and variants (when using require('execa'))
+              - patterns:
+                  - pattern: require('execa').shell($CMD, ...)
+                  - focus-metavariable: $CMD
+              - patterns:
+                  - pattern: require('execa').shellSync($CMD, ...)
+                  - focus-metavariable: $CMD
+              - patterns:
+                  - pattern: require('execa').stdout($CMD, ...)
+                  - focus-metavariable: $CMD
+              - patterns:
+                  - pattern: require('execa').stderr($CMD, ...)
+                  - focus-metavariable: $CMD
+              - patterns:
+                  - pattern: require('execa').sync($CMD, ...)
+                  - focus-metavariable: $CMD
+              - patterns:
+                  - pattern: require('execa').node($CMD, ...)
+                  - focus-metavariable: $CMD
+              - patterns:
+                  - pattern: require('execa')($CMD, ...)
+                  - focus-metavariable: $CMD
+              # $ template tag from execa - match when starts with interpolated var
+              - patterns:
+                  - pattern-either:
+                      - pattern: $`${$CMD}...`
+                      - pattern: $`${$CMD} ...`
+                  - focus-metavariable: $CMD
+              - patterns:
+                  - pattern-either:
+                      - pattern: $(...)`${$CMD}...`
+                      - pattern: $(...)`${$CMD} ...`
+                  - focus-metavariable: $CMD
+              - patterns:
+                  - pattern-either:
+                      - pattern: $(...).sync`${$CMD}...`
+                      - pattern: $(...).sync`${$CMD} ...`
+                  - focus-metavariable: $CMD
+              - patterns:
+                  - pattern-either:
+                      - pattern: $.sync`${$CMD}...`
+                      - pattern: $.sync`${$CMD} ...`
+                  - focus-metavariable: $CMD
+          - pattern-either:
+              - pattern-inside: |
+                  import $X from 'execa'
+                  ...
+              - pattern-inside: |
+                  import { ... } from 'execa'
+                  ...
+              - pattern-inside: |
+                  import * as $X from 'execa'
+                  ...
+              - pattern-inside: |
+                  $X = require('execa')
+                  ...
+              - pattern-inside: |
+                  const $X = require('execa')
+                  ...
+              - pattern-inside: |
+                  var $X = require('execa')
+                  ...
+              - pattern-inside: |
+                  let $X = require('execa')
+                  ...
+              - pattern-inside: |
+                  const { ... } = require('execa')
+                  ...
+              - pattern-inside: |
+                  require('execa')
+                  ...

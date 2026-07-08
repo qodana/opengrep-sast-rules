@@ -1,145 +1,265 @@
 rules:
-- id: command-injection-string-concatenation
-  message: >-
-    Detected user input being concatenated into a shell command string. String
-    concatenation with user input is dangerous and can lead to command injection
-    vulnerabilities. Use parameterized commands with array arguments (e.g., spawn with
-    an array) instead of string concatenation, or ensure proper input validation and
-    escaping.
-  metadata:
-    cwe:
-    - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
-    owasp:
-    - A01:2017 - Injection
-    - A03:2021 - Injection
-    category: security
-    technology:
-    - javascript
-    - nodejs
-    references:
-    - https://owasp.org/www-community/attacks/Command_Injection
-    - https://cheatsheetseries.owasp.org/cheatsheets/Nodejs_Security_Cheat_Sheet.html
-    cwe2022-top25: true
-    cwe2021-top25: true
-    subcategory:
-    - vuln
-    likelihood: HIGH
-    impact: HIGH
-    confidence: HIGH
-  languages:
-  - javascript
-  - typescript
-  severity: ERROR
-  mode: taint
-  pattern-sources:
-  - patterns:
-    - pattern-either:
-      # HTTP request sources
-      - pattern: $REQ.query
-      - pattern: $REQ.query.$PARAM
-      - pattern: url.parse($REQ.url, ...).query
-      - pattern: url.parse($REQ.url, ...).query.$PARAM
-      - pattern: $REQ.body
-      - pattern: $REQ.body.$PARAM
-      - pattern: $REQ.params
-      - pattern: $REQ.params.$PARAM
-      - pattern: $CTX.params
-      - pattern: $CTX.params.$PARAM
-      - pattern: $CTX.query
-      - pattern: $CTX.query.$PARAM
-      # Command line arguments
-      - pattern: process.argv
-      - pattern: process.argv[$IDX]
-      - pattern: process.argv.slice(...)
-      - pattern: require('yargs').argv
-      - pattern: require('yargs').argv.$PROP
-      - pattern: require('minimist')(...)
-      - pattern: require('minimist')(...).$PROP
-      # Function parameters in exported functions
+  - id: javascript-command-injection-string-concatenation
+    message: >-
+      Detected user input being concatenated into a shell command string. String
+      concatenation with user input is dangerous and can lead to command injection
+      vulnerabilities. Use parameterized commands with array arguments (e.g., spawn with
+      an array) instead of string concatenation, or ensure proper input validation and
+      escaping.
+    metadata:
+      cwe:
+        - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
+      owasp:
+        - "A01:2017 - Injection"
+        - "A03:2021 - Injection"
+        - "A05:2025 - Injection"
+      category: security
+      technology:
+        - javascript
+        - nodejs
+      references:
+        - https://owasp.org/www-community/attacks/Command_Injection
+        - https://cheatsheetseries.owasp.org/cheatsheets/Nodejs_Security_Cheat_Sheet.html
+      cwe2022-top25: true
+      cwe2021-top25: true
+      subcategory:
+        - vuln
+      likelihood: HIGH
+      impact: HIGH
+      confidence: HIGH
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR
+    mode: taint
+
+    pattern-sources:
       - patterns:
-        - pattern: $PARAM
-        - pattern-inside: |
-            module.exports.$FUNC = function(..., $PARAM, ...) {
-              ...
-            }
+          - pattern-either:
+              # HTTP request sources
+              - pattern: $REQ.query
+              - pattern: $REQ.query.$PARAM
+              - pattern: url.parse($REQ.url, ...).query
+              - pattern: url.parse($REQ.url, ...).query.$PARAM
+              - pattern: $REQ.body
+              - pattern: $REQ.body.$PARAM
+              - pattern: $REQ.params
+              - pattern: $REQ.params.$PARAM
+              - pattern: $CTX.params
+              - pattern: $CTX.params.$PARAM
+              - pattern: $CTX.query
+              - pattern: $CTX.query.$PARAM
+              # File upload / form sources (multer, formidable, busboy, multiparty)
+              - pattern: $REQ.file
+              - pattern: $REQ.file.$PROP
+              - pattern: $REQ.files
+              - pattern: $REQ.files.$PROP
+              - pattern: $REQ.files[$IDX]
+              - pattern: $REQ.files[$IDX].$PROP
+              - pattern: $PART.filename
+              - pattern: $FIELDS.name
+              - pattern: $FIELDS.filename
+              # Command line arguments
+              - pattern: process.argv
+              - pattern: process.argv[$IDX]
+              - pattern: process.argv.slice(...)
+              - pattern: require('yargs').argv
+              - pattern: require('yargs').argv.$PROP
+              - pattern: require('minimist')(...)
+              - pattern: require('minimist')(...).$PROP
+              # GitHub Actions
+              - pattern: $GITHUB.context.payload.pull_request.$PROP
+              - pattern: $GITHUB.context.payload.issue.$PROP
+
+    pattern-sinks:
       - patterns:
-        - pattern: $PARAM
-        - pattern-inside: |
-            exports.$FUNC = function(..., $PARAM, ...) {
-              ...
-            }
-      # GitHub Actions
-      - pattern: $GITHUB.context.payload.pull_request.$PROP
-      - pattern: $GITHUB.context.payload.issue.$PROP
-  pattern-sinks:
-  - patterns:
-    - pattern-either:
-      # String concatenation patterns
+          - pattern-either:
+              # String concatenation patterns
+              - patterns:
+                  - pattern-either:
+                      - pattern: $CP.exec("..." + $TAINT + ..., ...)
+                      - pattern: exec("..." + $TAINT + ..., ...)
+                      - pattern: $CP.execSync("..." + $TAINT + ..., ...)
+                      - pattern: execSync("..." + $TAINT + ..., ...)
+                      - pattern: $CP.execFile("..." + $TAINT + ..., ...)
+                      - pattern: execFile("..." + $TAINT + ..., ...)
+                      - pattern: $CP.execFileSync("..." + $TAINT + ..., ...)
+                      - pattern: execFileSync("..." + $TAINT + ..., ...)
+                      - pattern: $CP.spawn("..." + $TAINT + ..., ...)
+                      - pattern: spawn("..." + $TAINT + ..., ...)
+                      - pattern: $CP.spawnSync("..." + $TAINT + ..., ...)
+                      - pattern: spawnSync("..." + $TAINT + ..., ...)
+                  - focus-metavariable: $TAINT
+              # Template literal patterns
+              - patterns:
+                  - pattern-either:
+                      - pattern: $CP.exec(`...${$TAINT}...`, ...)
+                      - pattern: exec(`...${$TAINT}...`, ...)
+                      - pattern: $CP.execSync(`...${$TAINT}...`, ...)
+                      - pattern: execSync(`...${$TAINT}...`, ...)
+                      - pattern: $CP.execFile(`...${$TAINT}...`, ...)
+                      - pattern: execFile(`...${$TAINT}...`, ...)
+                      - pattern: $CP.execFileSync(`...${$TAINT}...`, ...)
+                      - pattern: execFileSync(`...${$TAINT}...`, ...)
+                      - pattern: $CP.spawn(`...${$TAINT}...`, ...)
+                      - pattern: spawn(`...${$TAINT}...`, ...)
+                      - pattern: $CP.spawnSync(`...${$TAINT}...`, ...)
+                      - pattern: spawnSync(`...${$TAINT}...`, ...)
+                  - focus-metavariable: $TAINT
+              # util.format patterns
+              - patterns:
+                  - pattern-either:
+                      - pattern: $CP.exec($UTIL.format("...", ..., $TAINT, ...), ...)
+                      - pattern: exec($UTIL.format("...", ..., $TAINT, ...), ...)
+                      - pattern: $CP.execSync($UTIL.format("...", ..., $TAINT, ...), ...)
+                      - pattern: execSync($UTIL.format("...", ..., $TAINT, ...), ...)
+                  - focus-metavariable: $TAINT
+          - pattern-either:
+              - pattern-inside: |
+                  $CP = require('child_process')
+                  ...
+              - pattern-inside: |
+                  import $CP from 'child_process'
+                  ...
+              # Property-access imports: var exec = require('child_process').exec
+              - pattern-inside: |
+                  $X = require('child_process').exec
+                  ...
+              - pattern-inside: |
+                  $X = require('child_process').execSync
+                  ...
+              - pattern-inside: |
+                  $X = require('child_process').execFile
+                  ...
+              - pattern-inside: |
+                  $X = require('child_process').execFileSync
+                  ...
+              - pattern-inside: |
+                  $X = require('child_process').spawn
+                  ...
+              - pattern-inside: |
+                  $X = require('child_process').spawnSync
+                  ...
+              - pattern-inside: |
+                  $X = require('node:child_process').exec
+                  ...
+              - pattern-inside: |
+                  $X = require('node:child_process').execSync
+                  ...
+              - pattern-inside: |
+                  $X = require('node:child_process').execFile
+                  ...
+              - pattern-inside: |
+                  $X = require('node:child_process').execFileSync
+                  ...
+              - pattern-inside: |
+                  $X = require('node:child_process').spawn
+                  ...
+              - pattern-inside: |
+                  $X = require('node:child_process').spawnSync
+                  ...
+              - pattern-inside: |
+                  const { ..., exec, ... } = require('child_process')
+                  ...
+              - pattern-inside: |
+                  const { ..., execSync, ... } = require('child_process')
+                  ...
+              - pattern-inside: |
+                  const { ..., execFile, ... } = require('child_process')
+                  ...
+              - pattern-inside: |
+                  const { ..., execFileSync, ... } = require('child_process')
+                  ...
+              - pattern-inside: |
+                  const { ..., spawn, ... } = require('child_process')
+                  ...
+              - pattern-inside: |
+                  const { ..., spawnSync, ... } = require('child_process')
+                  ...
+              - pattern-inside: |
+                  import { ..., exec, ... } from 'child_process'
+                  ...
+              - pattern-inside: |
+                  import { ..., execSync, ... } from 'child_process'
+                  ...
+              - pattern-inside: |
+                  import { ..., execFile, ... } from 'child_process'
+                  ...
+              - pattern-inside: |
+                  import { ..., execFileSync, ... } from 'child_process'
+                  ...
+              - pattern-inside: |
+                  import { ..., spawn, ... } from 'child_process'
+                  ...
+              - pattern-inside: |
+                  import { ..., spawnSync, ... } from 'child_process'
+                  ...
+              # node: protocol imports
+              - pattern-inside: |
+                  $CP = require('node:child_process')
+                  ...
+              - pattern-inside: |
+                  import $CP from 'node:child_process'
+                  ...
+              - pattern-inside: |
+                  const { ..., exec, ... } = require('node:child_process')
+                  ...
+              - pattern-inside: |
+                  const { ..., execSync, ... } = require('node:child_process')
+                  ...
+              - pattern-inside: |
+                  import { ..., exec, ... } from 'node:child_process'
+                  ...
+              - pattern-inside: |
+                  import { ..., execSync, ... } from 'node:child_process'
+                  ...
+
+    pattern-propagators:
+      - pattern: $TO = $FROM
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $FROM.$FIELD
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $FROM[$KEY]
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $FROM + $OTHER
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $OTHER + $FROM
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $FROM.$METHOD(...)
+        from: $FROM
+        to: $TO
+      - pattern: $TO = $METHOD($FROM, ...)
+        from: $FROM
+        to: $TO
+      - pattern: $FROM.forEach(function ($ITEM) { ... })
+        from: $FROM
+        to: $ITEM
+      - pattern: $FROM.forEach(($ITEM) => { ... })
+        from: $FROM
+        to: $ITEM
+      - pattern: $FROM.map(function ($ITEM) { ... })
+        from: $FROM
+        to: $ITEM
+      - pattern: $FROM.map(($ITEM) => { ... })
+        from: $FROM
+        to: $ITEM
+
+    pattern-sanitizers:
       - patterns:
-        - pattern-either:
-          - pattern: $CP.exec("..." + $TAINT + ..., ...)
-          - pattern: exec("..." + $TAINT + ..., ...)
-          - pattern: $CP.execSync("..." + $TAINT + ..., ...)
-          - pattern: execSync("..." + $TAINT + ..., ...)
-        - focus-metavariable: $TAINT
-      # Template literal patterns
-      - patterns:
-        - pattern-either:
-          - pattern: $CP.exec(`...${$TAINT}...`, ...)
-          - pattern: exec(`...${$TAINT}...`, ...)
-          - pattern: $CP.execSync(`...${$TAINT}...`, ...)
-          - pattern: execSync(`...${$TAINT}...`, ...)
-        - focus-metavariable: $TAINT
-      # util.format patterns
-      - patterns:
-        - pattern-either:
-          - pattern: $CP.exec($UTIL.format("...", ..., $TAINT, ...), ...)
-          - pattern: exec($UTIL.format("...", ..., $TAINT, ...), ...)
-          - pattern: $CP.execSync($UTIL.format("...", ..., $TAINT, ...), ...)
-          - pattern: execSync($UTIL.format("...", ..., $TAINT, ...), ...)
-        - focus-metavariable: $TAINT
-      # String variable with concatenation
-      - patterns:
-        - pattern: |
-            $CMD = "..." + $TAINT + ...
-        - focus-metavariable: $TAINT
-      - patterns:
-        - pattern: |
-            $CMD = `...${$TAINT}...`
-        - focus-metavariable: $TAINT
-    - pattern-either:
-      - pattern-inside: |
-          $CP = require('child_process')
-          ...
-      - pattern-inside: |
-          import $CP from 'child_process'
-          ...
-      - pattern-inside: |
-          const { ..., exec, ... } = require('child_process')
-          ...
-      - pattern-inside: |
-          const { ..., execSync, ... } = require('child_process')
-          ...
-      - pattern-inside: |
-          import { ..., exec, ... } from 'child_process'
-          ...
-      - pattern-inside: |
-          import { ..., execSync, ... } from 'child_process'
-          ...
-      - pattern-inside: |
-          $UTIL = require('util')
-          ...
-  pattern-sanitizers:
-  - patterns:
-    - pattern-either:
-      # Validation functions
-      - pattern: isValidName(...)
-      - pattern: isSafeName(...)
-      # Proper escaping with single quotes and proper replacement
-      - patterns:
-        - pattern: |
-            $SANITIZED = "'" + $X.replace(/'/g, "'\\''") + "'"
-      # Number conversions
-      - pattern: parseInt(...)
-      - pattern: parseFloat(...)
-      - pattern: Number(...)
+          - pattern-either:
+              # Validation functions
+              - pattern: isValidName(...)
+              - pattern: isSafeName(...)
+              # Proper escaping with single quotes and proper replacement
+              - patterns:
+                  - pattern: |
+                      $SANITIZED = "'" + $X.replace(/'/g, "'\\''") + "'"
+              # Number conversions
+              - pattern: parseInt(...)
+              - pattern: parseFloat(...)
+              - pattern: Number(...)

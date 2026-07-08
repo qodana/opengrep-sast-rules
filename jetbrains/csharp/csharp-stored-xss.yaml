@@ -1,14 +1,37 @@
 rules:
-  - id: csharp-codeql-stored-xss
+  - id: csharp-stored-xss
+    metadata:
+      category: security
+      cwe:
+        - "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp:
+        - "A07:2017 - Cross-Site Scripting (XSS)"
+        - "A03:2021 - Injection"
+        - "A05:2025 - Injection"
     languages: [ csharp ]
     severity: ERROR
-    message: Stored data reaches an HTML response
+    message: >-
+      User-controlled input previously stored in the database and returned in an HTML response
+      may introduce a stored XSS vulnerability
     mode: taint
 
     pattern-sources:
-      - pattern: $COMMAND.ExecuteReader()
+      - patterns:
+          - pattern: $CMD.ExecuteReader()
+          - pattern-either:
+              - pattern-inside: |
+                  SqlCommand $CMD = new SqlCommand(...);
+                  ...
+              - pattern-inside: |
+                  var $CMD = new SqlCommand(...);
+                  ...
 
     pattern-sinks:
       - patterns:
-          - pattern: $RESPONSE.Write($VALUE)
+          - pattern: $CTX.Response.Write($VALUE)
+          - pattern-inside: |
+              $TYPE $FUNCTION(HttpContext $CTX) {
+                ...
+              }
           - focus-metavariable: $VALUE
+
