@@ -45,20 +45,3 @@ rules:
                     ...
                   />
           - focus-metavariable: $VALUE
-
-    pattern-propagators:
-      - pattern: $TO = await $FROM.json()
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM.json()
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM.data
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM.$PROP
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM[$IDX]
-        from: $FROM
-        to: $TO

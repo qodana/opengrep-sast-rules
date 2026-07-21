@@ -8,7 +8,9 @@ rules:
         - "A01:2017 - Injection"
         - "A03:2021 - Injection"
         - "A05:2025 - Injection"
-    message: User-controlled input reaches dynamic code execution.
+    message: >-
+      User-controlled input from the HTTP request reaches code execution calls,
+      resulting in code injection vulnerabilities
     languages:
       - javascript
       - typescript
@@ -17,7 +19,6 @@ rules:
 
     pattern-sources:
       - pattern-either:
-          - pattern: $REQ.param(...)
           - pattern: $REQ.body
           - pattern: $REQ.body.$KEY
           - pattern: $REQ.body[$KEY]
@@ -27,10 +28,7 @@ rules:
           - pattern: $REQ.params
           - pattern: $REQ.params.$KEY
           - pattern: $REQ.params[$KEY]
-          - pattern: $REQUEST.query
-          - pattern: $REQUEST.query.$KEY
-          - pattern: $REQUEST.query[$KEY]
-          - pattern: document.location
+          - pattern: $REQ.param(...)
           - pattern: document.location.href
           - pattern: document.location.search
           - pattern: document.location.hash
@@ -43,27 +41,25 @@ rules:
               - pattern: $WS.on('message', function ($VALUE) { ... })
               - pattern: $WS.on("message", ($VALUE) => { ... })
               - pattern: $WS.on('message', ($VALUE) => { ... })
-              - pattern: '$NAME: ({ $VALUE }) => { ... }'
-              - pattern: 'resolve: ($ROOT, { $VALUE }, ...) => { ... }'
+              - pattern: export function $FN($VALUE) { ... }
+              - pattern: export function $FN($OBJ, $VALUE) { ... }
               - pattern: export async function $FN($VALUE) { ... }
-              - pattern: export function unsafeDeserialize($VALUE) { ... }
-              - pattern: global.unsafeDeserialize = function ($VALUE) { ... }
-              - pattern: export function unsafeGetter($OBJ, $VALUE) { ... }
-              - pattern: export function greySink($VALUE) { ... }
+              - pattern: export async function $FN($OBJ, $VALUE) { ... }
+              - pattern: global.$FIELD = function ($VALUE) { ... }
               - pattern: $RESPONSE.on("data", $VALUE => { ... })
               - pattern: $RESPONSE.on('data', $VALUE => { ... })
-              - pattern: 'return `(function(){${JSON.stringify($VALUE)}))`'
-              - pattern: 'var $FOO = `(function(){${JSON.stringify($VALUE)}))`'
-              - pattern: 'return `(() => {${JSON.stringify($VALUE)})`'
-              - pattern: 'return `() => {${JSON.stringify($VALUE)}`'
-              - pattern: htmlescape($VALUE)
           - focus-metavariable: $VALUE
 
     pattern-sinks:
       - patterns:
           - pattern-either:
               - pattern: eval($VALUE)
-              - pattern: new Function($VALUE, ...)
+              - pattern: Function(..., $VALUE, ...)
+              - pattern: new Function(..., $VALUE, ...)
+              - pattern: WebAssembly.compile($VALUE, ...)
+              - pattern: WebAssembly.compileStreaming($VALUE, ...)
+              # https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout
+              - pattern: setTimeout($VALUE, ...)
               - pattern: require("vm").runInThisContext($VALUE, ...)
               - pattern: require('vm').runInThisContext($VALUE, ...)
               - pattern: $VM.runInThisContext($VALUE, ...)
@@ -72,6 +68,10 @@ rules:
               - pattern: $VM.compileFunction($VALUE, ...)
               - pattern: new $VM.Script($VALUE, ...)
               - pattern: new $VM.SourceTextModule($VALUE, ...)
+              - pattern: |
+                  $RUN_C = require('vm').runInNewContext
+                  ...
+                  $RUN_C($VALUE)
               - pattern: $MODULE._compile($VALUE, ...)
               - pattern: |
                   $PTY = require('node-pty')
@@ -81,18 +81,42 @@ rules:
                   $SHELL.write($VALUE, ...)
               - pattern: "$CP.execFileSync('node', ['-e', $VALUE], ...)"
               - pattern: '$CP.execFileSync("node", ["-e", $VALUE], ...)'
-              - pattern: $SCOPE.$apply($VALUE, ...)
-              - pattern: $SCOPE.$applyAsync($VALUE, ...)
-              - pattern: $SCOPE.$eval($VALUE, ...)
-              - pattern: $SCOPE.$evalAsync($VALUE, ...)
-              - pattern: $SCOPE.$watch($VALUE, ...)
-              - pattern: $SCOPE.$watchCollection($VALUE, ...)
-              - pattern: $SCOPE.$watchGroup($VALUE, ...)
-              - pattern: $FILTER('orderBy')($ARRAY, $VALUE, ...)
-              - pattern: $FILTER("orderBy")($ARRAY, $VALUE, ...)
-              - pattern: 'doc.find({ $where: $VALUE, ... })'
-              - pattern: '$DOC.find({ $where: $VALUE, ... })'
-              - pattern: 'return { $where: $VALUE, ... }'
+              - patterns:
+                  - pattern-either:
+                      - pattern: $scope.$apply($VALUE)
+                      - pattern: $scope.$apply($VALUE, ...)
+                      - pattern: $scope.$applyAsync($VALUE, ...)
+                      - pattern: $scope.$eval($VALUE, ...)
+                      - pattern: $scope.$evalAsync($VALUE, ...)
+                      - pattern: $scope.$watch($VALUE, ...)
+                      - pattern: $scope.$watchCollection($VALUE, ...)
+                      - pattern: $scope.$watchGroup($VALUE, ...)
+                      - pattern: $filter('orderBy')($ARRAY, $VALUE, ...)
+                      - pattern: $filter("orderBy")($ARRAY, $VALUE, ...)
+                      - pattern: $interpolate($VALUE)
+                      - pattern: $parse($VALUE)
+                      - pattern: $compile($VALUE)
+                      - pattern: |
+                          $SCOPE = $scope
+                          ...
+                          $SCOPE.$apply($VALUE)
+                      - pattern: |
+                          $COMPILE = $compile
+                          ...
+                          $COMPILE($VALUE)
+                  - pattern-inside: |
+                      angular.module(..., ...).controller(...)
+                      ...
+              - patterns:
+                  - pattern: '{ $where: $VALUE, ... }'
+                  - pattern-inside: |
+                      $DB = require("mongodb")
+                      ...
+                      $CLIENT = $DB.MongoClient
+                      ...
+                      $CLIENT.connect(...,  (...) => {
+                        ...
+                      })
               - pattern: $($EL).attr("onclick", $VALUE, ...)
               - pattern: $($EL).attr('onclick', $VALUE, ...)
               - pattern: pug.compile($VALUE, ...)
@@ -109,76 +133,18 @@ rules:
               - pattern: Hogan.compile($VALUE, ...)
               - pattern: Eta.render($VALUE, ...)
               - pattern: Sqrl.render($VALUE, ...)
-              - pattern: webix.exec($VALUE, ...)
-              - pattern: 'webix.ui({ template: $VALUE, ... })'
+              - patterns:
+                  - pattern-either:
+                      - pattern: $WEBIX.exec($VALUE, ...)
+                      - pattern: '$WEBIX.ui({ template: $VALUE, ... })'
+                      - pattern: '$WEBIX.ui({ template: function(...) { ... $VALUE }, ... })'
+                  - pattern-inside: |
+                      import * as $WEBIX from 'webix'
+                      ...
               - pattern: $WEBVIEW.injectJavaScript($VALUE, ...)
-              - pattern: 'const $STR = `...${$VALUE}...`'
+              - pattern: '<WebView ... injectedJavaScript={$VALUE} ... />'
+              - pattern: '<script ...>{$VALUE}</script>'
           - focus-metavariable: $VALUE
-      - patterns:
-          - pattern: '<WebView ... injectedJavaScript={$VALUE} ... />'
-          - focus-metavariable: $VALUE
-      - patterns:
-          - pattern: '<script ...>{$VALUE}</script>'
-          - focus-metavariable: $VALUE
-      - patterns:
-          - pattern: |
-              $RUN_C = require('vm').runInNewContext
-              ...
-              $RUN_C($VALUE)
-          - focus-metavariable: $VALUE
-      - pattern-either:
-          - pattern: new Function($VALUE, ...)
-          - pattern: Function($VALUE, ...)
-          - pattern: require("vm").runInThisContext($VALUE, ...)
-          - pattern: require('vm').runInThisContext($VALUE, ...)
-          - pattern: $VM.runInThisContext($VALUE, ...)
-          - pattern: $VM.runInNewContext($VALUE, ...)
-          - pattern: $VM.runInContext($VALUE, ...)
-          - pattern: $VM.compileFunction($VALUE, ...)
-          - pattern: new $VM.Script($VALUE, ...)
-          - pattern: new $VM.SourceTextModule($VALUE, ...)
-          - pattern: WebAssembly.compile($VALUE, ...)
-          - pattern: WebAssembly.compileStreaming($VALUE, ...)
-          # https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout
-          - pattern: setTimeout($VALUE, ...)
-
-    pattern-propagators:
-      - pattern: $TO = $FROM
-        from: $FROM
-        to: $TO
-      - pattern: $TO = await $FROM
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM.$FIELD
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM[$KEY]
-        from: $FROM
-        to: $TO
-      - pattern: $TO.$FIELD = $FROM
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM + $OTHER
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $OTHER + $FROM
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM.$METHOD(...)
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $METHOD($FROM, ...)
-        from: $FROM
-        to: $TO
-      - pattern: $TO = new $CLASS($FROM, ...)
-        from: $FROM
-        to: $TO
-      - pattern: $TO = [$FROM, ...]
-        from: $FROM
-        to: $TO
-      - pattern: '$TO = { ..., $KEY: $FROM, ... }'
-        from: $FROM
-        to: $TO
 
     pattern-sanitizers:
       - patterns:

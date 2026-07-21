@@ -8,7 +8,9 @@ rules:
         - "A07:2017 - Cross-Site Scripting (XSS)"
         - "A03:2021 - Injection"
         - "A05:2025 - Injection"
-    message: User-controlled input reaches an HTML response.
+    message: >-
+      User-controlled input from an HTTP request is reflected in an HTML response, 
+      resulting in a reflected XSS vulnerability.
     languages:
       - javascript
       - typescript
@@ -27,131 +29,813 @@ rules:
           - pattern: $REQ.params[$KEY]
           - pattern: $REQ.url
           - pattern: $REQ.json()
-          - pattern: $REQUEST.query
-          - pattern: $REQUEST.query.$KEY
-      - patterns:
-          - pattern-either:
-              - pattern: let { $VALUE } = $REQ.params
-              - pattern: const { $VALUE } = $REQ.params
-              - pattern: 'let { $KEY: $VALUE } = $REQ.params'
-              - pattern: 'const { $KEY: $VALUE } = $REQ.params'
-              - pattern: 'const { keys: $VALUE } = $REQ.query'
-              - pattern: $PROCESS.process($INPUT, function ($ERR, $VALUE) { ... })
-              - pattern: $PROCESS.process($INPUT, ($ERR, $VALUE) => { ... })
-          - focus-metavariable: $VALUE
 
     pattern-sinks:
       - patterns:
-          - pattern-either:
-              - pattern: $RES.send($VALUE, ...)
-              - pattern: $RES.end($VALUE, ...)
-              - pattern: $RES.write($VALUE, ...)
-              - pattern: new Response($VALUE)
-              - pattern: new Response($VALUE, {})
-              - pattern: 'new Response($VALUE, { headers: null, ... })'
-              - pattern: 'new Response($VALUE, { headers: { "content-type": "text/html", ... }, ... })'
-              - pattern: "new Response($VALUE, { headers: { 'content-type': 'text/html', ... }, ... })"
-              - pattern: 'new Response($VALUE, { headers: { "Content-Type": "text/html", ... }, ... })'
-              - pattern: "new Response($VALUE, { headers: { 'Content-Type': 'text/html', ... }, ... })"
-              - pattern: 'new Response($VALUE, { headers: headers2, ... })'
-              - pattern: 'new Response($VALUE, { headers: headers3, ... })'
-              - pattern: 'new Response($VALUE, { headers: headers5, ... })'
-              - pattern: 'new Response($VALUE, { headers: headers6, ... })'
-              - pattern: 'new Response($VALUE, { headers, ... })'
-              - pattern: new NextResponse($VALUE)
-              - pattern: new NextResponse($VALUE, {})
-              - pattern: 'new NextResponse($VALUE, { headers: null, ... })'
-              - pattern: 'new NextResponse($VALUE, { headers: { "content-type": "text/html", ... }, ... })'
-              - pattern: "new NextResponse($VALUE, { headers: { 'content-type': 'text/html', ... }, ... })"
-              - pattern: 'new NextResponse($VALUE, { headers: { "Content-Type": "text/html", ... }, ... })'
-              - pattern: "new NextResponse($VALUE, { headers: { 'Content-Type': 'text/html', ... }, ... })"
-              - pattern: 'new NextResponse($VALUE, { headers: headers3, ... })'
-              - pattern: 'new NextResponse($VALUE, { headers: headers5, ... })'
-              - pattern: 'new NextResponse($VALUE, { headers, ... })'
-          - pattern-not-inside: |
-              $RES.set('Content-Type', 'text/plain');
-              ...
-          - pattern-not-inside: |
-              $RES.set("Content-Type", "text/plain");
-              ...
-          - pattern-not-inside: |
-              $RES.set('Content-Type', textContentType());
-              ...
-          - pattern-not-inside: |
-              $RES.setHeader('Content-Type', 'application/json');
-              ...
-          - pattern-not-inside: |
-              $RES.writeHead($CODE, {'Content-Type': 'application/json'});
-              ...
-          - pattern-not-inside: |
-              $RES.writeHead($CODE, {"Content-Type": "application/json"});
-              ...
-          - pattern-not-inside: |
-              $RES.writeHead($CODE, {"content-type": "text/plain; charset=utf-8"});
-              ...
+          - pattern: $RES.$SINK($VALUE, ...)
+          - metavariable-regex:
+              metavariable: $SINK
+              regex: '^(send|end|write)$'
+          - pattern-inside:
+              pattern-either:
+                # Express-style: 2-param callbacks
+                - pattern: |
+                    $APP.$METHOD($PATH, function($REQ, $RES) {
+                      ...
+                    })
+                - pattern: |
+                    $APP.$METHOD($PATH, ($REQ, $RES) => {
+                      ...
+                    })
+                - pattern: |
+                    $APP.$METHOD(function($REQ, $RES) {
+                      ...
+                    })
+                - pattern: |
+                    $APP.$METHOD(($REQ, $RES) => {
+                      ...
+                    })
+                - pattern: |
+                    $APP.$METHOD($PATH, function($REQ, $RES, $NEXT) {
+                      ...
+                    })
+                - pattern: |
+                    $APP.$METHOD($PATH, ($REQ, $RES, $NEXT) => {
+                      ...
+                    })
+                - pattern: |
+                    $APP.$METHOD(function($REQ, $RES, $NEXT) {
+                      ...
+                    })
+                - pattern: |
+                    function($REQ, $RES, $NEXT) {
+                      ...
+                    }
+                - pattern: |
+                    ($REQ, $RES, $NEXT) => {
+                      ...
+                    }
+                - pattern: |
+                    export default function $FUNC($REQ, $RES) {
+                      ...
+                    }
+                - pattern: |
+                    export async function $FUNC($CTX) {
+                      ...
+                      $RES = $CTX.res
+                      ...
+                    }
+                - pattern: |
+                    $PROP = async ($CTX) => {
+                      ...
+                      $RES = $CTX.res
+                      ...
+                    }
+          - pattern-not-inside:
+              pattern-either:
+                - pattern: |
+                    $RES.$SET("Content-Type", "text/plain")
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET("Content-Type", "application/json")
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET("Content-Type", "text/plain; charset=utf-8")
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET("Content-Type", "text/plain;charset=utf-8")
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET("Content-Type", "text/plain; charset=utf8")
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET("Content-Type", "text/plain;charset=utf8")
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET("Content-Type", textContentType())
+                    ...
+                    $RES.$SINK($VALUE, ...)
+          - pattern-not-inside:
+              pattern-either:
+                - pattern: |
+                    $RES.$SET("Content-type", "text/plain")
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET("Content-type", "application/json")
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET("Content-type", "text/plain; charset=utf-8")
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET("Content-type", "text/plain;charset=utf-8")
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET("Content-type", "text/plain; charset=utf8")
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET("Content-type", "text/plain;charset=utf8")
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET("Content-type", textContentType())
+                    ...
+                    $RES.$SINK($VALUE, ...)
+          - pattern-not-inside:
+              pattern-either:
+                - pattern: |
+                    $RES.$SET("content-type", "text/plain")
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET("content-type", "application/json")
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET("content-type", "text/plain; charset=utf-8")
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET("content-type", "text/plain;charset=utf-8")
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET("content-type", "text/plain; charset=utf8")
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET("content-type", "text/plain;charset=utf8")
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET("content-type", textContentType())
+                    ...
+                    $RES.$SINK($VALUE, ...)
+          - pattern-not-inside:
+              pattern-either:
+                - pattern: |
+                    $RES.$SET({..., "Content-Type": "text/plain", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET({..., "Content-Type": "application/json", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET({..., "Content-Type": "text/plain; charset=utf-8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET({..., "Content-Type": "text/plain;charset=utf-8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET({..., "Content-Type": "text/plain; charset=utf8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET({..., "Content-Type": "text/plain;charset=utf8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET({..., "Content-Type": textContentType(), ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+          - pattern-not-inside:
+              pattern-either:
+                - pattern: |
+                    $RES.$SET({..., "Content-type": "text/plain", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET({..., "Content-type": "application/json", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET({..., "Content-type": "text/plain; charset=utf-8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET({..., "Content-type": "text/plain;charset=utf-8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET({..., "Content-type": "text/plain; charset=utf8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET({..., "Content-type": "text/plain;charset=utf8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET({..., "Content-type": textContentType(), ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+          - pattern-not-inside:
+              pattern-either:
+                - pattern: |
+                    $RES.$SET({..., "content-type": "text/plain", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET({..., "content-type": "application/json", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET({..., "content-type": "text/plain; charset=utf-8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET({..., "content-type": "text/plain;charset=utf-8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET({..., "content-type": "text/plain; charset=utf8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET({..., "content-type": "text/plain;charset=utf8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.$SET({..., "content-type": textContentType(), ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+          - pattern-not-inside:
+              pattern-either:
+                - pattern: |
+                    $RES.writeHead(..., {..., "Content-Type": "text/plain", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.writeHead(..., {..., "Content-Type": "application/json", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.writeHead(..., {..., "Content-Type": "text/plain; charset=utf-8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.writeHead(..., {..., "Content-Type": "text/plain;charset=utf-8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.writeHead(..., {..., "Content-Type": "text/plain; charset=utf8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.writeHead(..., {..., "Content-Type": "text/plain;charset=utf8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.writeHead(..., {..., "Content-Type": textContentType(), ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+          - pattern-not-inside:
+              pattern-either:
+                - pattern: |
+                    $RES.writeHead(..., {..., "Content-type": "text/plain", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.writeHead(..., {..., "Content-type": "application/json", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.writeHead(..., {..., "Content-type": "text/plain; charset=utf-8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.writeHead(..., {..., "Content-type": "text/plain;charset=utf-8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.writeHead(..., {..., "Content-type": "text/plain; charset=utf8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.writeHead(..., {..., "Content-type": "text/plain;charset=utf8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.writeHead(..., {..., "Content-type": textContentType(), ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+          - pattern-not-inside:
+              pattern-either:
+                - pattern: |
+                    $RES.writeHead(..., {..., "content-type": "text/plain", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.writeHead(..., {..., "content-type": "application/json", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.writeHead(..., {..., "content-type": "text/plain; charset=utf-8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.writeHead(..., {..., "content-type": "text/plain;charset=utf-8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.writeHead(..., {..., "content-type": "text/plain; charset=utf8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.writeHead(..., {..., "content-type": "text/plain;charset=utf8", ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
+                - pattern: |
+                    $RES.writeHead(..., {..., "content-type": textContentType(), ...})
+                    ...
+                    $RES.$SINK($VALUE, ...)
           - focus-metavariable: $VALUE
       - patterns:
-          - pattern: 'handler: function ($REQUEST) { ... return $VALUE; ... }'
+          - pattern: new $RESPONSE($VALUE)
+          - metavariable-regex:
+              metavariable: $RESPONSE
+              regex: '^(Response|NextResponse)$'
+          - pattern-inside:
+              pattern-either:
+                - pattern: |
+                    $APP.$METHOD($PATH, ($REQ) => {
+                      ...
+                    })
+                - pattern: |
+                    $APP.$METHOD($PATH, function($REQ) {
+                      ...
+                    })
+                - pattern: |
+                    $APP.$METHOD($PATH, ($REQ, $RES) => {
+                      ...
+                    })
+                - pattern: |
+                    $APP.$METHOD($PATH, function($REQ, $RES) {
+                      ...
+                    })
+                - pattern: |
+                    export async function $FUNC($REQ) {
+                      ...
+                    }
+                - pattern: |
+                    export default function $FUNC($REQ) {
+                      ...
+                    }
+                - pattern: |
+                    export default function $FUNC($REQ, $RES) {
+                      ...
+                    }
           - focus-metavariable: $VALUE
-
-    pattern-propagators:
-      - pattern: $TO = $FROM
-        from: $FROM
-        to: $TO
-      - pattern: $TO = await $FROM
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM.$FIELD
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM[$KEY]
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM + $OTHER
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $OTHER + $FROM
-        from: $FROM
-        to: $TO
-      - pattern: $TO = `${$FROM}`
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM.$METHOD(...)
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $METHOD($FROM, ...)
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $METHOD(..., $FROM, ...)
-        from: $FROM
-        to: $TO
-      - pattern: $TO = new $CLASS($FROM, ...)
-        from: $FROM
-        to: $TO
-      - pattern: $TO = [$FROM, ...]
-        from: $FROM
-        to: $TO
-      - pattern: '$TO = { ..., $KEY: $FROM, ... }'
-        from: $FROM
-        to: $TO
-      - pattern: $TO.$FIELD = $FROM
-        from: $FROM
-        to: $TO
-      - pattern: $TO.push($FROM)
-        from: $FROM
-        to: $TO
+      - patterns:
+          - pattern: new $RESPONSE($VALUE, $INIT)
+          - metavariable-regex:
+              metavariable: $RESPONSE
+              regex: '^(Response|NextResponse)$'
+          - pattern-inside:
+              pattern-either:
+                - pattern: |
+                    $APP.$METHOD($PATH, ($REQ) => {
+                      ...
+                    })
+                - pattern: |
+                    $APP.$METHOD($PATH, function($REQ) {
+                      ...
+                    })
+                - pattern: |
+                    $APP.$METHOD($PATH, ($REQ, $RES) => {
+                      ...
+                    })
+                - pattern: |
+                    $APP.$METHOD($PATH, function($REQ, $RES) {
+                      ...
+                    })
+                - pattern: |
+                    export async function $FUNC($REQ) {
+                      ...
+                    }
+                - pattern: |
+                    export default function $FUNC($REQ) {
+                      ...
+                    }
+                - pattern: |
+                    export default function $FUNC($REQ, $RES) {
+                      ...
+                    }
+          - pattern-not:
+              pattern-either:
+                - pattern: |
+                    new $RESPONSE($VALUE, {
+                      ...,
+                      headers: {..., "Content-Type": "text/plain", ...},
+                      ...
+                    })
+                - pattern: |
+                    new $RESPONSE($VALUE, {
+                      ...,
+                      headers: {..., "Content-Type": "application/json", ...},
+                      ...
+                    })
+                - pattern: |
+                    new $RESPONSE($VALUE, {
+                      ...,
+                      headers: {..., "Content-Type": "text/plain; charset=utf-8", ...},
+                      ...
+                    })
+                - pattern: |
+                    new $RESPONSE($VALUE, {
+                      ...,
+                      headers: {..., "Content-Type": "text/plain;charset=utf-8", ...},
+                      ...
+                    })
+                - pattern: |
+                    new $RESPONSE($VALUE, {
+                      ...,
+                      headers: {..., "Content-Type": "text/plain; charset=utf8", ...},
+                      ...
+                    })
+                - pattern: |
+                    new $RESPONSE($VALUE, {
+                      ...,
+                      headers: {..., "Content-Type": "text/plain;charset=utf8", ...},
+                      ...
+                    })
+                - pattern: |
+                    new $RESPONSE($VALUE, {
+                      ...,
+                      headers: {..., "Content-Type": textContentType(), ...},
+                      ...
+                    })
+          - pattern-not:
+              pattern-either:
+                - pattern: |
+                    new $RESPONSE($VALUE, {
+                      ...,
+                      headers: {..., "Content-type": "text/plain", ...},
+                      ...
+                    })
+                - pattern: |
+                    new $RESPONSE($VALUE, {
+                      ...,
+                      headers: {..., "Content-type": "application/json", ...},
+                      ...
+                    })
+                - pattern: |
+                    new $RESPONSE($VALUE, {
+                      ...,
+                      headers: {..., "Content-type": "text/plain; charset=utf-8", ...},
+                      ...
+                    })
+                - pattern: |
+                    new $RESPONSE($VALUE, {
+                      ...,
+                      headers: {..., "Content-type": "text/plain;charset=utf-8", ...},
+                      ...
+                    })
+                - pattern: |
+                    new $RESPONSE($VALUE, {
+                      ...,
+                      headers: {..., "Content-type": "text/plain; charset=utf8", ...},
+                      ...
+                    })
+                - pattern: |
+                    new $RESPONSE($VALUE, {
+                      ...,
+                      headers: {..., "Content-type": "text/plain;charset=utf8", ...},
+                      ...
+                    })
+                - pattern: |
+                    new $RESPONSE($VALUE, {
+                      ...,
+                      headers: {..., "Content-type": textContentType(), ...},
+                      ...
+                    })
+          - pattern-not:
+              pattern-either:
+                - pattern: |
+                    new $RESPONSE($VALUE, {
+                      ...,
+                      headers: {..., "content-type": "text/plain", ...},
+                      ...
+                    })
+                - pattern: |
+                    new $RESPONSE($VALUE, {
+                      ...,
+                      headers: {..., "content-type": "application/json", ...},
+                      ...
+                    })
+                - pattern: |
+                    new $RESPONSE($VALUE, {
+                      ...,
+                      headers: {..., "content-type": "text/plain; charset=utf-8", ...},
+                      ...
+                    })
+                - pattern: |
+                    new $RESPONSE($VALUE, {
+                      ...,
+                      headers: {..., "content-type": "text/plain;charset=utf-8", ...},
+                      ...
+                    })
+                - pattern: |
+                    new $RESPONSE($VALUE, {
+                      ...,
+                      headers: {..., "content-type": "text/plain; charset=utf8", ...},
+                      ...
+                    })
+                - pattern: |
+                    new $RESPONSE($VALUE, {
+                      ...,
+                      headers: {..., "content-type": "text/plain;charset=utf8", ...},
+                      ...
+                    })
+                - pattern: |
+                    new $RESPONSE($VALUE, {
+                      ...,
+                      headers: {..., "content-type": textContentType(), ...},
+                      ...
+                    })
+          - pattern-not-inside:
+              pattern-either:
+                - pattern: |
+                    $HEADERS = new Headers({..., "Content-Type": "text/plain", ...})
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers({..., "Content-Type": "application/json", ...})
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers({..., "Content-Type": "text/plain; charset=utf-8", ...})
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers({..., "Content-Type": "text/plain;charset=utf-8", ...})
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers({..., "Content-Type": "text/plain; charset=utf8", ...})
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers({..., "Content-Type": "text/plain;charset=utf8", ...})
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers({..., "Content-Type": textContentType(), ...})
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+          - pattern-not-inside:
+              pattern-either:
+                - pattern: |
+                    $HEADERS = new Headers({..., "Content-type": "text/plain", ...})
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers({..., "Content-type": "application/json", ...})
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers({..., "Content-type": "text/plain; charset=utf-8", ...})
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers({..., "Content-type": "text/plain;charset=utf-8", ...})
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers({..., "Content-type": "text/plain; charset=utf8", ...})
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers({..., "Content-type": "text/plain;charset=utf8", ...})
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers({..., "Content-type": textContentType(), ...})
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+          - pattern-not-inside:
+              pattern-either:
+                - pattern: |
+                    $HEADERS = new Headers({..., "content-type": "text/plain", ...})
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers({..., "content-type": "application/json", ...})
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers({..., "content-type": "text/plain; charset=utf-8", ...})
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers({..., "content-type": "text/plain;charset=utf-8", ...})
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers({..., "content-type": "text/plain; charset=utf8", ...})
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers({..., "content-type": "text/plain;charset=utf8", ...})
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers({..., "content-type": textContentType(), ...})
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+          - pattern-not-inside:
+              pattern-either:
+                - pattern: |
+                    $HEADERS = new Headers(...)
+                    ...
+                    $HEADERS.$OP("Content-Type", "text/plain")
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers(...)
+                    ...
+                    $HEADERS.$OP("Content-Type", "application/json")
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers(...)
+                    ...
+                    $HEADERS.$OP("Content-Type", "text/plain; charset=utf-8")
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers(...)
+                    ...
+                    $HEADERS.$OP("Content-Type", "text/plain;charset=utf-8")
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers(...)
+                    ...
+                    $HEADERS.$OP("Content-Type", "text/plain; charset=utf8")
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers(...)
+                    ...
+                    $HEADERS.$OP("Content-Type", "text/plain;charset=utf8")
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers(...)
+                    ...
+                    $HEADERS.$OP("Content-Type", textContentType())
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+          - pattern-not-inside:
+              pattern-either:
+                - pattern: |
+                    $HEADERS = new Headers(...)
+                    ...
+                    $HEADERS.$OP("Content-type", "text/plain")
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers(...)
+                    ...
+                    $HEADERS.$OP("Content-type", "application/json")
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers(...)
+                    ...
+                    $HEADERS.$OP("Content-type", "text/plain; charset=utf-8")
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers(...)
+                    ...
+                    $HEADERS.$OP("Content-type", "text/plain;charset=utf-8")
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers(...)
+                    ...
+                    $HEADERS.$OP("Content-type", "text/plain; charset=utf8")
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers(...)
+                    ...
+                    $HEADERS.$OP("Content-type", "text/plain;charset=utf8")
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers(...)
+                    ...
+                    $HEADERS.$OP("Content-type", textContentType())
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+          - pattern-not-inside:
+              pattern-either:
+                - pattern: |
+                    $HEADERS = new Headers(...)
+                    ...
+                    $HEADERS.$OP("content-type", "text/plain")
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers(...)
+                    ...
+                    $HEADERS.$OP("content-type", "application/json")
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers(...)
+                    ...
+                    $HEADERS.$OP("content-type", "text/plain; charset=utf-8")
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers(...)
+                    ...
+                    $HEADERS.$OP("content-type", "text/plain;charset=utf-8")
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers(...)
+                    ...
+                    $HEADERS.$OP("content-type", "text/plain; charset=utf8")
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers(...)
+                    ...
+                    $HEADERS.$OP("content-type", "text/plain;charset=utf8")
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+                - pattern: |
+                    $HEADERS = new Headers(...)
+                    ...
+                    $HEADERS.$OP("content-type", textContentType())
+                    ...
+                    new $RESPONSE($VALUE, { ..., headers: $HEADERS, ... })
+          - focus-metavariable: $VALUE
 
     pattern-sanitizers:
       - pattern-either:
-          - pattern: escapeHtml(...)
-          - pattern: escape(...)
-          - pattern: escapeHtml1(...)
-          - pattern: escapeHtml2(...)
-          - pattern: escapeHtml4(...)
-          - pattern: encodeURI(...)
-          - pattern: encodeURIComponent(...)
-          - pattern: $MARKDOWN.use(require('markdown-it-sanitizer')).render(...)
-          - pattern: $MARKDOWN.use(require("markdown-it-sanitizer")).render(...)
-          - pattern: markdownIt2.render(...)
-          - pattern: $REQ.cookies[$KEY]
-          - pattern: $REMARK.use(sanitize).processSync(...)
+          - pattern: $REQ.cookies[...]
+          - pattern: console.log(...)
+          - patterns:
+              - pattern: $SERIALIZE(...)
+              - pattern-not: '$SERIALIZE(..., {unsafe: true})'
+              - pattern-inside: |
+                  $SERIALIZE = require("serialize-javascript")
+                  ...
+          - patterns:
+              - pattern: $REMARK().use($SANITIZE).$METHOD(...)
+              - pattern-inside: |
+                  $REMARK = require("remark")
+                  ...
+              - pattern-inside: |
+                  $SANITIZE = require("rehype-sanitize")
+                  ...
+          - patterns:
+              - pattern: $MARKDOWN.use($SANITIZE).$METHOD(...)
+              - metavariable-pattern:
+                  metavariable: $SANITIZE
+                  pattern: require("markdown-it-sanitizer")
+          - patterns:
+              - pattern: $SAFE_MARKDOWN.render(...)
+              - pattern-inside: |
+                  $SAFE_MARKDOWN = require("markdown-it")($OPTIONS)
+                  ...
+              - metavariable-pattern:
+                  metavariable: $OPTIONS
+                  patterns:
+                    - pattern-not: '{html: true}'
+          - patterns:
+              - pattern: $ESCAPE(...)
+              - metavariable-regex:
+                  metavariable: $ESCAPE
+                  regex: '^(escape|encode).*$'
+          - patterns:
+              - pattern: $OBJ.$ESCAPE(...)
+              - metavariable-regex:
+                  metavariable: $ESCAPE
+                  regex: '^(escape|encode).*$'
+
+    pattern-propagators:
+      - pattern: $PROCESS.process($INPUT, function ($ERR, $VALUE) { ... })
+        from: $INPUT
+        to: $VALUE
+      - pattern: $PROCESS.process($INPUT, ($ERR, $VALUE) => { ... })
+        from: $INPUT
+        to: $VALUE

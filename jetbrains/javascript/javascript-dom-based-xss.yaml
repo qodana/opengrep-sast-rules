@@ -353,36 +353,6 @@ rules:
           - focus-metavariable: $VALUE
 
     pattern-propagators:
-      - pattern: $TO = $FROM
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM.$FIELD
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM[$KEY]
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM + $OTHER
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $OTHER + $FROM
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM.$METHOD(...)
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $METHOD($FROM, ...)
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $METHOD(..., $FROM, ...)
-        from: $FROM
-        to: $TO
-      - pattern: $TO = new URL($FROM, ...)
-        from: $FROM
-        to: $TO
-      - pattern: $TO = new URLSearchParams($FROM, ...)
-        from: $FROM
-        to: $TO
       - pattern: $TO.push($FROM)
         from: $FROM
         to: $TO
@@ -392,9 +362,6 @@ rules:
       - pattern: $FROM.forEach(($ITEM) => { ... })
         from: $FROM
         to: $ITEM
-      - pattern: $TO = await $FROM
-        from: $FROM
-        to: $TO
 
     pattern-sanitizers:
       - pattern-either:

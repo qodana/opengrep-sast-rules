@@ -1,11 +1,10 @@
 rules:
-  - id: javascript-command-injection-from-environment-path
+  - id: javascript-command-injection-dirname
     message: >-
-      Detected the use of __dirname or path operations in a shell command. While __dirname
-      itself is safe, concatenating it with user input or using it in shell commands
-      without proper escaping can lead to command injection if the path contains special
-      shell characters. Use execFile with array arguments instead of exec with string
-      concatenation, or ensure proper escaping of paths.
+      Detected the use of __dirname in a shell command. While __dirname
+      itself is safe, concatenating it with user input can lead to command injection 
+      if the path contains special shell characters. Use execFile/execFileSync with array
+      arguments instead of exec with string concatenation, or ensure proper escaping of paths.
     metadata:
       cwe:
         - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
@@ -37,10 +36,6 @@ rules:
           - pattern-either:
               # __dirname can be dangerous if directory name has spaces or special chars
               - pattern: __dirname
-              - pattern: path.join(__dirname, ...)
-              - pattern: $PATH.join(__dirname, ...)
-              - pattern: path.resolve(__dirname, ...)
-              - pattern: $PATH.resolve(__dirname, ...)
 
     pattern-sinks:
       - patterns:
@@ -61,18 +56,6 @@ rules:
                       - pattern: spawn($CMD, ...)
                       - pattern: spawnSync($CMD, ...)
                   - focus-metavariable: $CMD
-              # child_process.spawn and spawnSync - args argument
-              - patterns:
-                  - pattern-either:
-                      - pattern: $CP.spawn($CMD, $ARGS)
-                      - pattern: $CP.spawn($CMD, $ARGS, $OPTS)
-                      - pattern: $CP.spawnSync($CMD, $ARGS)
-                      - pattern: $CP.spawnSync($CMD, $ARGS, $OPTS)
-                      - pattern: spawn($CMD, $ARGS)
-                      - pattern: spawn($CMD, $ARGS, $OPTS)
-                      - pattern: spawnSync($CMD, $ARGS)
-                      - pattern: spawnSync($CMD, $ARGS, $OPTS)
-                  - focus-metavariable: $ARGS
               # child_process.execFile and execFileSync - command argument
               - patterns:
                   - pattern-either:
@@ -81,18 +64,6 @@ rules:
                       - pattern: execFile($CMD, ...)
                       - pattern: execFileSync($CMD, ...)
                   - focus-metavariable: $CMD
-              # child_process.execFile and execFileSync - args argument
-              - patterns:
-                  - pattern-either:
-                      - pattern: $CP.execFile($FILE, $ARGS)
-                      - pattern: $CP.execFile($FILE, $ARGS, $OPTS, ...)
-                      - pattern: $CP.execFileSync($FILE, $ARGS)
-                      - pattern: $CP.execFileSync($FILE, $ARGS, $OPTS)
-                      - pattern: execFile($FILE, $ARGS)
-                      - pattern: execFile($FILE, $ARGS, $OPTS, ...)
-                      - pattern: execFileSync($FILE, $ARGS)
-                      - pattern: execFileSync($FILE, $ARGS, $OPTS)
-                  - focus-metavariable: $ARGS
               # execa.shell variants
               - patterns:
                   - pattern-either:
@@ -151,3 +122,8 @@ rules:
               - pattern-inside: |
                   import $EXECA from 'execa'
                   ...
+
+    pattern-sanitizers:
+      - pattern: $TO = "\"" + $FROM + "\""
+        from: $FROM
+        to: $TO
