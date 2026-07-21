@@ -8,7 +8,9 @@ rules:
         - "A01:2017 - Injection"
         - "A03:2021 - Injection"
         - "A05:2025 - Injection"
-    message: Library input is used to build a shell command.
+    message: >-
+      Exported Node.js function input parameter is used to build a shell command,
+      resulting in an OS command injection vulnerability
     languages:
       - javascript
       - typescript
@@ -18,213 +20,220 @@ rules:
     pattern-sources:
       - patterns:
           - pattern-either:
+              - pattern: module.exports = function ($INPUT) { ... }
+              - pattern: module.exports = function ($SAFE, $INPUT) { ... }
               - pattern: module.exports.$NAME = function ($INPUT) { ... }
               - pattern: module.exports.$NAME = function ($SAFE, $INPUT) { ... }
-              - pattern: module.exports = function ($INPUT) { ... }
-              - pattern: $OBJ.prototype.$METHOD = function ($INPUT) { ... }
-              - pattern: constructor($INPUT) { ... }
-              - pattern: $METHOD($INPUT) { ... }
-              - pattern: $METHOD($SAFE, $INPUT) { ... }
-              - pattern: function $FN($INPUT) { ... }
-              - pattern: function $FN($SAFE, $INPUT) { ... }
+              - pattern: module.exports.$NAME.$SUBNAME = function ($INPUT) { ... }
+              - pattern: module.exports.$NAME.$SUBNAME = function ($SAFE, $INPUT) { ... }
+              - patterns:
+                  - pattern: $FUNC.prototype.method = function ($INPUT) { ... }
+                  - pattern-inside: |
+                      function $FUNC(...) {
+                        ... 
+                      }
+                      ...
+                      module.exports.$NAME = new $FUNC(...)
+              - patterns:
+                  - pattern-either:
+                      - pattern: constructor($INPUT) { ... }
+                      - pattern: $FUNC($INPUT) { ... }
+                  - pattern-inside: |
+                      class $CLASS {
+                        ...
+                      }
+                      ...
+                      module.exports.$NAME = $CLASS;
           - focus-metavariable: $INPUT
 
     pattern-sinks:
       - patterns:
           - pattern-either:
-              - pattern: $CP.exec($VALUE, ...)
-              - pattern: $CP.execSync($VALUE, ...)
+              - pattern: $CP.exec("..." + $VALUE)
+              - pattern: $CP.exec("..." + $VALUE + ..., ...)
+              - pattern: $CP.execSync("..." + $VALUE + ..., ...)
               - pattern: '$CP.execFile($CMD, $VALUE, {shell: true}, ...)'
               - pattern: '$CP.execFileSync($CMD, $VALUE, {shell: true}, ...)'
               - pattern: '$CP.spawn($CMD, $VALUE, {shell: true}, ...)'
               - pattern: '$CP.spawnSync($CMD, $VALUE, {shell: true}, ...)'
-              - pattern: spawn($CMD, $VALUE, $OPTS)
-              - pattern: exec($VALUE, ...)
-              - pattern: asyncExec($VALUE, ...)
-              - pattern: $REQ("mz/child_process").exec($VALUE, ...)
-              - pattern: $REQ('mz/child_process').exec($VALUE, ...)
-              - pattern: $OBJ.cp.exec($VALUE, ...)
-              - pattern: indirectShell($CMD, $VALUE, $OPTS)
+              - patterns:
+                  - pattern: $SPAWN(..., $VALUE, ...)
+                  - pattern-inside: |
+                      $SPAWN = $CP.spawn
+                      ...
+          - pattern-either:
+              - pattern-inside: |
+                  $CP = require('child_process')
+                  ...
+              - pattern-inside: |
+                  $CP = require("child_process")
+                  ...
+              - pattern-inside: |
+                  $CP = require('node:child_process')
+                  ...
+              - pattern-inside: |
+                  $CP = require("node:child_process")
+                  ...
+              - pattern-inside: |
+                  import $CP from 'child_process'
+                  ...
+              - pattern-inside: |
+                  import $CP from "child_process"
+                  ...
+              - pattern-inside: |
+                  import $CP from 'node:child_process'
+                  ...
+              - pattern-inside: |
+                  import $CP from "node:child_process"
+                  ...
           - focus-metavariable: $VALUE
       - patterns:
           - pattern-either:
-              - pattern: $CMD = $PREFIX + $VALUE
-              - pattern: $CMD = $VALUE + $SUFFIX
-              - pattern: $CMD = util.format($FMT, $VALUE, ...)
-              - pattern: $CMD = require("printf")($FMT, $VALUE, ...)
-              - pattern: $CMD = require('printf')($FMT, $VALUE, ...)
-              - pattern: $CMD = path.join($VALUE, ...)
-              - pattern: $ARGS.push($VALUE)
+              - patterns:
+                  - pattern: exec($VALUE, ...)
+                  - pattern-inside: |
+                      module.exports.$NAME = function(...) {
+                        ...  
+                      }
+              - patterns:
+                  - pattern: $ASYNC_EXEC($VALUE, ...)
+                  - pattern-inside: |
+                      $ASYNC_EXEC = require("async-execute")
+                      ...
+              - patterns:
+                  - pattern: $MZ_CP.exec($VALUE, ...)
+                  - metavariable-pattern:
+                      metavariable: $MZ_CP
+                      pattern: require("mz/child_process")
+              - patterns:
+                  - pattern: $OBJ.$FIELD.exec($VALUE, ...)
+                  - pattern-inside: |
+                      $OBJ = {
+                          $FIELD: require('child_process')
+                      };
+                      ...
           - focus-metavariable: $VALUE
 
     pattern-propagators:
-      - pattern: $TO = $FROM
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM.$FIELD
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM[$KEY]
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM + $OTHER
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $OTHER + $FROM
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM.$METHOD(...)
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $METHOD($FROM, ...)
-        from: $FROM
-        to: $TO
       - pattern: $TO.push($FROM)
-        from: $FROM
-        to: $TO
-      - pattern: $TO = [$FROM, ...]
         from: $FROM
         to: $TO
 
     pattern-sanitizers:
-      - pattern-either:
-          - pattern: Number(...)
-          - pattern: isSafeName(...)
-          - pattern: isValidName(...)
-          - pattern: sanitizeShellString(...)
-          - pattern: yetAnohterSanitizer(...)
-          - pattern: cleanInput(...)
-          - pattern: |
-              $VALUE.replace(/'/g, "'\\''")
-          - pattern: |
-              $VALUE.replace(new RegExp("\\'", $FLAGS), "'\\''")
       - patterns:
           - pattern-either:
-              - pattern: |
-                  if (!isValidName($VALUE)) {
-                    return;
-                  }
-              - pattern: |
-                  if (!isSafeName($VALUE)) {
-                    return;
-                  }
-              - pattern: |
-                  if (!$PATH.exist($VALUE)) {
-                    ...
-                    return;
-                  }
-              - pattern: |
-                  if (/[^A-Za-z0-9_\/:=-]/.test($VALUE)) {
-                    ...
-                  } else {
-                    ...
-                  }
-              - pattern: |
-                  if (/^[A-Za-z0-9_\/:=-]$/.test($VALUE)) {
-                    ...
-                  }
-              - pattern: |
-                  if (!/^([a-zA-Z0-9]+))?$/.test($VALUE)) {
-                    ...
-                    process.exit(...);
-                  }
-              - pattern: |
-                  if (!$FS.existsSync($PREFIX + $VALUE)) {
-                    ...
-                    return;
-                  }
-              - pattern: |
-                  if (typeof $VALUE === "undefined") {
-                    ...
-                  }
-              - pattern: |
-                  if (typeof $VALUE === "number") {
-                    ...
-                  }
-              - pattern: |
-                  if (isNaN(parseInt($VALUE))) {
-                    ...
-                  } else {
-                    ...
-                  }
-              - pattern: |
-                  if (isNaN(+$VALUE)) {
-                    ...
-                  } else {
-                    ...
-                  }
-              - pattern: |
-                  if (isNaN(parseInt($VALUE, 10))) {
-                    ...
-                  } else {
-                    ...
-                  }
-              - pattern: |
-                  if (isNaN($VALUE - 0)) {
-                    ...
-                  } else {
-                    ...
-                  }
-              - pattern: |
-                  if (isSafeName($VALUE)) {
-                    ...
-                  }
-              - pattern: |
-                  if (isSafeName($VALUE) === true) {
-                    ...
-                  }
-              - pattern: |
-                  if (isSafeName($VALUE) !== false) {
-                    ...
-                  }
-              - pattern: |
-                  if (indirectThing($VALUE)) {
-                    ...
-                  }
-              - pattern: |
-                  if (indirectThing2($VALUE)) {
-                    ...
-                  }
-              - pattern: |
-                  if (moreIndirect($VALUE)) {
-                    ...
-                  }
-              - pattern: |
-                  if (moreIndirect($VALUE) !== false) {
-                    ...
-                  }
+              - pattern: Number($VALUE)
+              - patterns:
+                  - pattern: $SANITIZER($VALUE)
+                  - metavariable-regex:
+                      metavariable: $SANITIZER
+                      regex: '^(sanitize\w+|(clean|clear)\w+|\w+[Ss]anitizer|(isSafe|isValid)\w+)$'
+              - patterns:
+                  - pattern: $VALUE.replace($REGEX, "'\\''")
+                  - metavariable-pattern:
+                      metavariable: $REGEX
+                      patterns:
+                        - pattern-either:
+                            - pattern: "/'/g"
+                            - pattern: "new RegExp(..., 'g')"
+                            - pattern: "new RegExp(..., $FUNC())"
+          - focus-metavariable: $VALUE
+      - patterns:
+          - pattern-either:
+              - patterns:
+                  - pattern: |
+                      if (!$IS_VALID($VALUE)) {
+                        return;
+                      }
+                  - metavariable-regex:
+                      metavariable: $IS_VALID
+                      regex: '^(isSafe|isValid)\w*$'
+              - patterns:
+                  - pattern-either:
+                      - pattern: |
+                          if ($IS_VALID($VALUE)) {
+                            ...
+                          }
+                      - pattern: |
+                          if ($IS_VALID($VALUE) === true) {
+                            ...
+                          }
+                      - pattern: |
+                          if ($IS_VALID($VALUE) !== false) {
+                            ...
+                          }
+                  - metavariable-regex:
+                      metavariable: $IS_VALID
+                      regex: '^(isSafe|isValid)\w*$'
+              - patterns:
+                  - pattern: |
+                      if (!$PATH.exist($VALUE)) {
+                          ...
+                      }
+                  - pattern-inside: |
+                      $PATH = require("path")
+                      ...
+              - patterns:
+                  - pattern: |
+                      if (!$FS.existsSync("..." + $VALUE)) {
+                          ...
+                          return;
+                      }
+                  - pattern-inside: |
+                      $FS = require("fs")
+                      ...
+              - patterns:
+                  - pattern-either:
+                      - pattern: |
+                          if ($PATTERN.test($VALUE)) {
+                              ...
+                          }
+                      - pattern: |
+                          if (!$PATTERN.test($VALUE)) {
+                              ...
+                          }
+                  - metavariable-regex:
+                      metavariable: $PATTERN
+                      regex: '/.*/'
+              - patterns:
+                  - pattern: |
+                      if (typeof $VALUE === $TYPE) {
+                        ...
+                      }
+                  - metavariable-regex:
+                      metavariable: $TYPE
+                      regex: '^"(undefined|number)"$'
+              - patterns:
+                  - pattern: |
+                      if ($FUNC($VALUE)) {
+                          ...
+                      }
+                  - pattern-inside: |
+                      function $FUNC(...) {
+                          ...
+                      }
+                      ...
           - focus-metavariable: $VALUE
         by-side-effect: true
       - patterns:
-          - pattern: |
-              if (isNaN($VALUE)) {
-                ...
-              } else {
-                ...
-              }
-          - pattern-not: |
-              if (isNaN(parseInt(...))) {
-                ...
-              } else {
-                ...
-              }
-          - pattern-not: |
-              if (isNaN(+$OTHER)) {
-                ...
-              } else {
-                ...
-              }
-          - pattern-not: |
-              if (isNaN($OTHER - 0)) {
-                ...
-              } else {
-                ...
-              }
-          - pattern-not: |
-              if (isNaN($OTHER | 0)) {
-                ...
-              } else {
-                ...
-              }
+          - pattern-either:
+              - pattern: |
+                  if (isNaN($VALUE)) {
+                      ...
+                  } else {
+                      ...
+                  }
+              - pattern: |
+                  if (isNaN($METHOD($VALUE))) {
+                      ...
+                  } else {
+                      ...
+                  }
+              - pattern: |
+                  if (isNaN($METHOD($VALUE, ...))) {
+                      ...
+                  } else {
+                      ...
+                  }
           - focus-metavariable: $VALUE
         by-side-effect: true

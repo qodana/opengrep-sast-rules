@@ -8,7 +8,9 @@ rules:
         - "A07:2017 - Cross-Site Scripting (XSS)"
         - "A03:2021 - Injection"
         - "A05:2025 - Injection"
-    message: Stored data is written to an HTML response.
+    message: >-
+      Stored data from files is written to an HTML response,
+      resulting in a stored XSS vulnerability.
     languages:
       - javascript
       - typescript
@@ -17,13 +19,20 @@ rules:
 
     pattern-sources:
       - patterns:
+          - pattern: $TORRENT.name
+          - pattern-inside: |
+              $PARSE_TORRENT = require('parse-torrent')
+              ...
+              $TORRENT = $PARSE_TORRENT(...)
+              ...
+      - patterns:
           - pattern-either:
               - pattern: $FS.readdir($DIR, function ($ERR, $FILES) { ... })
               - pattern: $FS.readdir($DIR, ($ERR, $FILES) => { ... })
+              - pattern-inside: |
+                  $FS = require('fs')
+                  ...
           - focus-metavariable: $FILES
-      - pattern-either:
-          - pattern: $TORRENT.name
-          - pattern: parseTorrent(...).name
 
     pattern-sinks:
       - patterns:
@@ -37,12 +46,9 @@ rules:
       - pattern: $FROM.forEach(function ($ITEM) { ... $TO.push($ITEM); ... })
         from: $FROM
         to: $TO
-      - pattern: $FROM.forEach(function ($ITEM) { ... })
-        from: $FROM
-        to: $ITEM
-      - pattern: $TO.push($FROM)
+      - pattern: $FROM.forEach(function ($TO) { ... })
         from: $FROM
         to: $TO
-      - pattern: $TO = format($FROM)
+      - pattern: $TO.push($FROM)
         from: $FROM
         to: $TO

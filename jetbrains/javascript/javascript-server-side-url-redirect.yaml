@@ -8,7 +8,9 @@ rules:
         - "A05:2017 - Broken Access Control"
         - "A01:2021 - Broken Access Control"
         - "A01:2025 - Broken Access Control"
-    message: User-controlled URL reaches a server-side redirect.
+    message: >-
+      User-controlled input from the URL used in a server-side redirect,
+      resulting in an open redirect vulnerability
     languages:
       - javascript
       - typescript
@@ -28,62 +30,76 @@ rules:
           - pattern: $REQ.body
           - pattern: $REQ.body.$PARAM
           - pattern: $REQ.param(...)
-          - pattern: $CTX.query
-          - pattern: $CTX.query.$PARAM
           - pattern: query.$PARAM
 
     pattern-sinks:
       - patterns:
           - pattern-either:
               - pattern: $RES.redirect($URL, ...)
-              - pattern: $CTX.redirect($URL, ...)
               - pattern: $RES.header("Location", $URL, ...)
-              - pattern: $RES.header('Location', $URL, ...)
               - pattern: $RES.set("Location", $URL, ...)
-              - pattern: $RES.set('Location', $URL, ...)
-              - pattern: |
-                  $RES.writeHead($CODE, {Location: $URL}, ...)
+              - pattern: $RES.setHeader("Location", $URL)
               - pattern: |
                   $RES.writeHead($CODE, { Location: $URL }, ...)
-              - pattern: Linking.openURL($URL, ...)
-              - pattern: $LINKING.openURL($URL, ...)
+              - pattern: '<WebView ... url={$URL} ... />'
+              - pattern: '<WebView ... source={$URL} ... />'
           - focus-metavariable: $URL
-          - pattern-not: $RES.redirect('/users/' + $URL)
-          - pattern-not: $RES.redirect('/users/' + $REQ.params.$PARAM)
-          - pattern-not: $RES.redirect('users/' + $URL)
-          - pattern-not: $RES.redirect('users/' + $REQ.params.$PARAM)
-          - pattern-not: $RES.redirect('/u' + $URL)
-          - pattern-not: $RES.redirect('/u' + $REQ.params.$PARAM)
-          - pattern-not: $RES.redirect('/' + ('/u' + $REQ.params.$PARAM))
-          - pattern-not: $RES.redirect(['index.html?section=', ...].join(...))
-          - pattern-not: |
-              $RES.writeHead($CODE, { Location: '/local/' + $URL }, ...)
-          - pattern-not: |
-              $RES.writeHead($CODE, { Location: '//localhost/' + $URL }, ...)
-          - pattern-not-inside: |
-              if (VALID_REDIRECT === $URL) {
-                ...
-              }
-          - pattern-not-inside: |
-              if ($URL === 'semmle.com')
-                ...
-          - pattern-not-inside: |
-              if ($URL.startsWith("http://example.com/"))
-                ...
-          - pattern-not-inside: |
-              if (SAFE_TARGETS.hasOwnProperty($URL))
-                ...
-          - pattern-not-inside: |
-              if ($URL in SAFE_TARGETS)
-                ...
-          - pattern-not-inside: |
-              if (SAFE_TARGETS[$URL] != undefined)
-                ...
-          - pattern-not-inside: |
-              if (void(0) == SAFE_TARGETS[$URL])
-                ...
-              else
-                ...
-          - pattern-not-inside: |
-              if (Object.hasOwn(SAFE_TARGETS, $URL))
-                ...
+
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: $RES.redirect("..." + $URL)
+              - pattern: $RES.redirect($FN() + "..." + $URL)
+              - pattern: $RES.redirect($FN() + ($ANY + $URL))
+              - pattern: $RES.redirect(["...", $URL].$FN(...))
+              - pattern: $RES.redirect([...].$FN(...) + "..." + $URL)
+              - pattern: |
+                  $RES.writeHead(..., { Location: "..." + $URL }, ...)
+              - pattern: |
+                  if ($URL === $ANY) {
+                    ...
+                  }
+              - pattern: |
+                  if ($ANY === $URL) {
+                    ...
+                  }
+              - pattern: |
+                  if ($URL === "...") {
+                    ...
+                  }
+              - pattern: |
+                  if ("..." === $URL) {
+                    ...
+                  }
+              - pattern: |
+                  if ($ANY.hasOwn(..., $URL)) {
+                    ...
+                  }
+              - pattern: |
+                  if ($ANY.hasOwnProperty($URL)) {
+                    ...
+                  }
+              - pattern: |
+                  if ($URL in $ANY)
+                    ...
+              - pattern: |
+                  if ($ANY[$URL] != undefined) {
+                    ...
+                  }
+          - focus-metavariable: $URL
+        by-side-effect: true
+      - patterns:
+          - pattern-either:
+              - pattern: |
+                  if ($URL.startsWith("$HOST")) {
+                    ...
+                  }
+              - pattern: |
+                  if ($URL.startsWith("$HOST" + ...)) {
+                    ...
+                  }
+          - metavariable-regex:
+              metavariable: $HOST
+              regex: '^(https?:)?//[^/]+(?:/.*)?$'
+          - focus-metavariable: $URL
+        by-side-effect: true

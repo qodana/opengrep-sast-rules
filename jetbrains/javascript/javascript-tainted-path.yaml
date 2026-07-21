@@ -199,34 +199,7 @@ rules:
           - focus-metavariable: $PATH
 
     pattern-propagators:
-      - pattern: $TO = $FROM
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM.$FIELD
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM[$KEY]
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM + $OTHER
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $OTHER + $FROM
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $FROM.$METHOD(...)
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $METHOD($FROM, ...)
-        from: $FROM
-        to: $TO
-      - pattern: $TO = $METHOD(..., $FROM, ...)
-        from: $FROM
-        to: $TO
       - pattern: $TO.push($FROM)
-        from: $FROM
-        to: $TO
-      - pattern: $TO = await $FROM
         from: $FROM
         to: $TO
 

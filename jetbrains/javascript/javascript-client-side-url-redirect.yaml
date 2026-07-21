@@ -8,7 +8,9 @@ rules:
         - "A05:2017 - Broken Access Control"
         - "A01:2021 - Broken Access Control"
         - "A01:2025 - Broken Access Control"
-    message: Browser-controlled URL data reaches a navigation sink.
+    message: >-
+      User-controlled input from the URL reaches a navigation sink,
+      resulting in an open redirect vulnerability
     languages:
       - javascript
       - typescript
@@ -27,8 +29,19 @@ rules:
           - pattern: document.location.href
           - pattern: document.location.search
           - pattern: document.location.hash
-          - pattern: $LOCATION.search(...)
-          - pattern: $HISTORY.location.hash
+          - pattern: win.location.href
+          - pattern: $location.search(...)
+          - patterns:
+              - pattern-either:
+                  - pattern: $HISTORY.location.hash
+                  - pattern-inside: |
+                      $HISTORY = require('history').createBrowserHistory()
+                      ...
+                  - pattern-inside: |
+                      $HISTORY_LIB = require('history')
+                      ...
+                      $HISTORY = $HISTORY_LIB.createBrowserHistory()
+                      ...
       - patterns:
           - pattern-either:
               - pattern: self.onmessage = function ($EVENT) { ... }
@@ -44,18 +57,32 @@ rules:
               - pattern: document.location = $URL
               - pattern: location.href = $URL
               - pattern: window.location.href = $URL
+              - pattern: window.open($URL, ...)
+              - pattern: win.location.assign($URL)
+              - pattern: window.location.replace($URL)
+              - patterns:
+                  - pattern: $SHELL.openExternal($URL)
+                  - pattern-inside: |
+                      import { $SHELL } from 'electron'
+                      ...
               - pattern: $EL.href = $URL
               - pattern: $EL.src = $URL
               - pattern: $EL.action = $URL
               - pattern: $EL.formaction = $URL
               - pattern: $EL.data = $URL
-              - pattern: window.open($URL, ...)
-              - pattern: location.assign($URL, ...)
-              - pattern: location.replace($URL, ...)
-              - pattern: $ROUTER.push($URL, ...)
-              - pattern: $HISTORY.push($URL, ...)
-              - pattern: $HISTORY.replace($URL, ...)
-              - pattern: $LOCATION.url($URL, ...)
+              - patterns:
+                  - pattern-either:
+                      - pattern: $HISTORY.push($URL, ...)
+                      - pattern: $HISTORY.replace($URL, ...)
+                      - pattern-inside: |
+                          $HISTORY = require('history').createBrowserHistory()
+                          ...
+                      - pattern-inside: |
+                          $HISTORY_LIB = require('history')
+                          ...
+                          $HISTORY = $HISTORY_LIB.createBrowserHistory()
+                          ...
+              - pattern: $location.url($URL, ...)
               - pattern: importScripts($URL, ...)
               - pattern: self.importScripts($URL, ...)
               - pattern: $(...).attr("href", $URL, ...)
@@ -66,24 +93,15 @@ rules:
       - patterns:
           - pattern-either:
               - pattern: |
-                  if ($URL.startsWith('https://example.com/')) {
+                  if ($URL.startsWith("$HOST")) {
                     ...
                   }
               - pattern: |
-                  if ($URL.startsWith('https://example.com//')) {
+                  if ($URL.startsWith("$HOST" + ...)) {
                     ...
                   }
-              - pattern: |
-                  if ($URL.startsWith('https://example.com/foo')) {
-                    ...
-                  }
-              - pattern: |
-                  if ($URL.startsWith('//example.com/')) {
-                    ...
-                  }
-              - pattern: |
-                  if ($URL.startsWith('https://example.com/' + ...)) {
-                    ...
-                  }
+          - metavariable-regex:
+              metavariable: $HOST
+              regex: '^(https?:)?//[^/]+(?:/.*)?$'
           - focus-metavariable: $URL
         by-side-effect: true
