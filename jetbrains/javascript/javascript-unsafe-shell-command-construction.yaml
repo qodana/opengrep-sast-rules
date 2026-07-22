@@ -1,6 +1,7 @@
 rules:
   - id: javascript-unsafe-shell-command-construction
     metadata:
+      shortDescription: "Node.js function parameter is used to build a shell command"
       category: security
       cwe:
         - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"

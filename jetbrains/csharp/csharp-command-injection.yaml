@@ -1,6 +1,7 @@
 rules:
   - id: csharp-command-injection
     metadata:
+      shortDescription: "User input reaches the process's starting logic without validation"
       category: security
       cwe:
         - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
@@ -11,7 +12,8 @@ rules:
     languages: [ csharp ]
     severity: ERROR
     message: >-
-      User-controlled input reaches the process's starting logic without validation, leading to Command Injection vulnerability
+      User-controlled input reaches the process's starting logic without validation,
+      leading to Command Injection vulnerability
     mode: taint
 
     pattern-sources:

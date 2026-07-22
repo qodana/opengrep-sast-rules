@@ -6,6 +6,7 @@ rules:
       shell commands and can be vulnerable when user input is passed without validation.
       Use proper input validation or avoid passing user input to command execution functions.
     metadata:
+      shortDescription: "User input flowing into execa command execution"
       cwe:
         - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
       owasp:

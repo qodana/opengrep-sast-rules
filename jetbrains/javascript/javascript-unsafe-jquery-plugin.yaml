@@ -1,6 +1,7 @@
 rules:
   - id: javascript-unsafe-jquery-plugin
     metadata:
+      shortDescription: "jQuery plugin option data reaches a selector sink"
       category: security
       cwe:
         - "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"

@@ -1,6 +1,7 @@
 rules:
   - id: javascript-client-side-request-forgery
     metadata:
+      shortDescription: "URL provided by the user triggers another HTTP call"
       category: security
       cwe:
         - "CWE-918: Server-Side Request Forgery (SSRF)"
@@ -8,7 +9,9 @@ rules:
         - "A5:2017 - Broken Access Control"
         - "A10:2021 - Server-Side Request Forgery"
         - "A01:2025 - Broken Access Control"
-    message: User-controlled URL reaches an outgoing request sink.
+    message: >-
+      URL provided by the user triggers another HTTP call, 
+      leading to a Server-Side Request Forgery (SSRF) vulnerability
     languages:
       - javascript
       - typescript

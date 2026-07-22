@@ -6,6 +6,7 @@ rules:
       injection vulnerability. Validate and sanitize user input before passing to command
       execution functions.
     metadata:
+      shortDescription: "User input flowing into third-party command execution libraries"
       cwe:
         - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
       owasp:

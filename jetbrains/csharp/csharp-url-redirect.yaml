@@ -1,6 +1,7 @@
 rules:
   - id: csharp-url-redirect
     metadata:
+      shortDescription: "User input reaches an Open Redirect target"
       category: security
       cwe:
         - "CWE-601: URL Redirection to Untrusted Site ('Open Redirect')"
@@ -11,7 +12,8 @@ rules:
     languages: [ csharp ]
     severity: ERROR
     message: >-
-      User-controlled input from the HTTP request query or form data reaches a redirect target, resulting in an Open Redirect vulnerability
+      User-controlled input from the HTTP request query or form data reaches a redirect target,
+      resulting in an Open Redirect vulnerability
     mode: taint
 
     pattern-sources:

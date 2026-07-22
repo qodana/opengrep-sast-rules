@@ -1,6 +1,7 @@
 rules:
   - id: javascript-second-order-command-injection
     metadata:
+      shortDescription: "User-provided argument can trigger command execution"
       category: security
       cwe:
         - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
@@ -8,7 +9,8 @@ rules:
         - "A01:2017 - Injection"
         - "A03:2021 - Injection"
         - "A05:2025 - Injection"
-    message: User-controlled git or hg argument can trigger command execution through options.
+    message: >-
+      User-controlled git or hg argument can trigger command execution through options
     languages:
       - javascript
       - typescript

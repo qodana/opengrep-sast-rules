@@ -1,6 +1,7 @@
 rules:
   - id: csharp-reflected-xss-asp
     metadata:
+      shortDescription: "User input reaches the HTML output context"
       category: security
       cwe:
         - "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
@@ -11,7 +12,8 @@ rules:
     languages: [ csharp ]
     severity: ERROR
     message: >-
-      User-controlled input reaches the HTML output context, resulting in a reflected XSS vulnerability
+      User-controlled input reaches the HTML output context, 
+      resulting in a reflected XSS vulnerability
     mode: taint
 
     pattern-sources:

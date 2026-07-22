@@ -6,6 +6,7 @@ rules:
       PR descriptions, branch names, etc. This could lead to a command injection vulnerability.
       Validate and sanitize all GitHub Actions context data before using it in commands.
     metadata:
+      shortDescription: "GitHub Actions context data flowing into a command execution"
       cwe:
         - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
       owasp:

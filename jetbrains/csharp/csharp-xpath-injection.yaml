@@ -1,6 +1,7 @@
 rules:
   - id: csharp-xpath-injection
     metadata:
+      shortDescription: "User input reaches an XPath expression"
       category: security
       cwe:
         - "CWE-643: Improper Neutralization of Data within XPath Expressions ('XPath Injection')"

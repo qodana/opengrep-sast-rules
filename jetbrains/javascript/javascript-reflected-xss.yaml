@@ -1,6 +1,7 @@
 rules:
   - id: javascript-reflected-xss
     metadata:
+      shortDescription: "User input is reflected in an HTML response"
       category: security
       cwe:
         - "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
@@ -10,7 +11,7 @@ rules:
         - "A05:2025 - Injection"
     message: >-
       User-controlled input from an HTTP request is reflected in an HTML response, 
-      resulting in a reflected XSS vulnerability.
+      resulting in a reflected XSS vulnerability
     languages:
       - javascript
       - typescript

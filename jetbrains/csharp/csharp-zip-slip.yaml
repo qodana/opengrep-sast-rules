@@ -1,6 +1,7 @@
 rules:
   - id: csharp-zip-slip
     metadata:
+      shortDescription: "Entry path from an archive reaches a filesystem write API"
       category: security
       cwe:
         - "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
@@ -11,7 +12,8 @@ rules:
     languages: [ csharp ]
     severity: ERROR
     message: >-
-      Entry path from an archive reaches a filesystem write API, leading to a ZipSlip vulnerability
+      Entry path from an archive reaches a filesystem write API, 
+      leading to a ZipSlip vulnerability
     mode: taint
 
     pattern-sources:

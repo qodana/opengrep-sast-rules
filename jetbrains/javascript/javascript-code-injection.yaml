@@ -1,6 +1,7 @@
 rules:
   - id: javascript-code-injection
     metadata:
+      shortDescription: "User input reaches code execution calls"
       category: security
       cwe:
         - "CWE-94: Improper Control of Generation of Code ('Code Injection')"
@@ -10,7 +11,7 @@ rules:
         - "A05:2025 - Injection"
     message: >-
       User-controlled input from the HTTP request reaches code execution calls,
-      resulting in code injection vulnerabilities
+      resulting in Code Injection vulnerabilities
     languages:
       - javascript
       - typescript

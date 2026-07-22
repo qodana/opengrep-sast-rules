@@ -1,6 +1,7 @@
 rules:
   - id: csharp-conditional-bypass
     metadata:
+      shortDescription: "User input used in a condition guard for a sensitive action"
       category: security
       cwe:
         - "CWE-807: Reliance on Untrusted Inputs in a Security Decision"
@@ -10,7 +11,8 @@ rules:
     languages: [ csharp ]
     severity: ERROR
     message: >-
-      User-controlled input used in a condition guard for a sensitive action might lead to a security guard bypass
+      User-controlled input used in a condition guard for a sensitive action 
+      might lead to a security guard bypass
     mode: taint
 
     pattern-sources:

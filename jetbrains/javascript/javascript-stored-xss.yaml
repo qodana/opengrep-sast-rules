@@ -1,6 +1,7 @@
 rules:
   - id: javascript-stored-xss
     metadata:
+      shortDescription: "Stored data from files is written to an HTML response"
       category: security
       cwe:
         - "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
@@ -10,7 +11,7 @@ rules:
         - "A05:2025 - Injection"
     message: >-
       Stored data from files is written to an HTML response,
-      resulting in a stored XSS vulnerability.
+      resulting in a stored XSS vulnerability
     languages:
       - javascript
       - typescript

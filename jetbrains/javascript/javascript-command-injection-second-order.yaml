@@ -8,6 +8,7 @@ rules:
       Validate repository URLs and command arguments against an allowlist, or use the '--'
       separator before user-controlled values.
     metadata:
+      shortDescription: "User input flowing into arguments for commands that can execute arbitrary code"
       cwe:
         - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
         - "CWE-88: Improper Neutralization of Argument Delimiters in a Command ('Argument Injection')"

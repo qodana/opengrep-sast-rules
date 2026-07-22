@@ -5,6 +5,7 @@ rules:
       This could lead to a command injection vulnerability where an attacker could execute
       arbitrary commands on the system.
     metadata:
+      shortDescription: "User input from HTTP request flowing into a command execution"
       cwe:
         - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
       owasp:
