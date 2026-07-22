@@ -1,11 +1,12 @@
 rules:
   - id: javascript-command-injection-spawn-shell-option
     message: >-
-      Detected user input flowing into spawn/execFile with shell:true option. When the
-      shell option is enabled, these functions behave like exec and interpret shell
-      metacharacters, making them vulnerable to command injection. Either remove the
-      shell:true option or ensure user input is properly validated and escaped.
+      Detected user input flowing into spawn or execFile calls. When the
+      shell option is enabled (via shell:true option), these functions behave like exec 
+      and interpret shell metacharacters, making them vulnerable to command injection. 
+      Either remove the shell:true option or ensure user input is properly validated and escaped.
     metadata:
+      shortDescription: "User input flowing into spawn or execFile calls"
       cwe:
         - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
       owasp:

@@ -1,6 +1,7 @@
 rules:
   - id: javascript-client-side-url-redirect
     metadata:
+      shortDescription: "User input reaches an Open Redirect call"
       category: security
       cwe:
         - "CWE-601: URL Redirection to Untrusted Site ('Open Redirect')"

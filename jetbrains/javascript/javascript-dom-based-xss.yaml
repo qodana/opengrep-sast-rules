@@ -1,6 +1,7 @@
 rules:
   - id: javascript-dom-based-xss
     metadata:
+      shortDescription: "Browser data reaches a DOM HTML"
       category: security
       cwe:
         - "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
@@ -8,7 +9,8 @@ rules:
         - "A07:2017 - Cross-Site Scripting (XSS)"
         - "A03:2021 - Injection"
         - "A05:2025 - Injection"
-    message: User-controlled browser data reaches a DOM HTML sink.
+    message: >-
+      User-controlled browser data reaches a DOM HTML sink
     languages:
       - javascript
       - typescript

@@ -1,6 +1,7 @@
 rules:
   - id: javascript-unsafe-dynamic-method-access
     metadata:
+      shortDescription: "Browser message data reaches a dynamic method lookup"
       category: security
       cwe:
         - "CWE-94: Improper Control of Generation of Code ('Code Injection')"
@@ -8,7 +9,8 @@ rules:
         - "A01:2017 - Injection"
         - "A03:2021 - Injection"
         - "A05:2025 - Injection"
-    message: Browser message data reaches a dynamic method lookup.
+    message: >-
+      Browser message data reaches a dynamic method lookup
     languages:
       - javascript
       - typescript

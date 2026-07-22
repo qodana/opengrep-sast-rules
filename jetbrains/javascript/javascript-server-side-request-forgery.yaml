@@ -1,13 +1,15 @@
 rules:
   - id: javascript-server-side-request-forgery
     metadata:
+      shortDescription: "User URL reaches an outgoing request call"
       category: security
       cwe:
         - "CWE-918: Server-Side Request Forgery (SSRF)"
       owasp:
         - "A10:2021 - Server-Side Request Forgery"
         - "A01:2025 - Broken Access Control"
-    message: User-controlled URL reaches an outgoing request sink.
+    message: >-
+      User-controlled URL reaches an outgoing request sink
     languages:
       - javascript
       - typescript

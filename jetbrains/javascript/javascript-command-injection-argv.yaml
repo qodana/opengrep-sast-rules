@@ -6,6 +6,7 @@ rules:
       malicious arguments to execute arbitrary commands. Validate and sanitize command line
       arguments before using them in command execution functions.
     metadata:
+      shortDescription: "Command line arguments is used in a command execution"
       cwe:
         - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
       owasp:

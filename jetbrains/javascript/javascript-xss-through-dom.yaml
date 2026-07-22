@@ -1,6 +1,7 @@
 rules:
   - id: javascript-xss-through-dom
     metadata:
+      shortDescription: "HTML DOM text is reinterpreted again"
       category: security
       cwe:
         - "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
@@ -9,7 +10,7 @@ rules:
         - "A03:2021 - Injection"
         - "A05:2025 - Injection"
     message: >-
-      HTML DOM text is reinterpreted again, as HTML might lead to DOM-based XSS.
+      HTML DOM text is reinterpreted again, as HTML might lead to DOM-based XSS
     languages:
       - javascript
       - typescript

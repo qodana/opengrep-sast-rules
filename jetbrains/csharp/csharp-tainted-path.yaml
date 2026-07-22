@@ -1,6 +1,7 @@
 rules:
   - id: csharp-tainted-path
     metadata:
+      shortDescription: "User input reaching an insecure filesystem API"
       category: security
       cwe:
         - "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
@@ -11,7 +12,8 @@ rules:
     languages: [ csharp ]
     severity: ERROR
     message: >-
-      User input (e.g., from the URL parameters) reaching an insecure filesystem API call could result in a Path Traversal vulnerability
+      User input (e.g., from the URL parameters) reaching an insecure filesystem API call 
+      could result in a Path Traversal vulnerability
     mode: taint
 
     pattern-sources:

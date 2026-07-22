@@ -1,6 +1,7 @@
 rules:
   - id: csharp-sql-injection
     metadata:
+      shortDescription: "User input reaches SQL command construction"
       category: security
       cwe:
         - "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
@@ -11,7 +12,8 @@ rules:
     languages: [ csharp ]
     severity: ERROR
     message: >-
-      User-controlled input reaches SQL command construction, resulting in a SQL injection vulnerability
+      User-controlled input reaches SQL command construction, 
+      resulting in a SQL injection vulnerability
     mode: taint
 
     pattern-sources:

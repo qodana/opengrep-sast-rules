@@ -1,6 +1,7 @@
 rules:
   - id: javascript-server-side-url-redirect
     metadata:
+      shortDescription: "User input used in a server-side redirect"
       category: security
       cwe:
         - "CWE-601: URL Redirection to Untrusted Site ('Open Redirect')"
@@ -9,7 +10,7 @@ rules:
         - "A01:2021 - Broken Access Control"
         - "A01:2025 - Broken Access Control"
     message: >-
-      User-controlled input from the URL used in a server-side redirect,
+      User-controlled input from the URL is used in a server-side redirect,
       resulting in an open redirect vulnerability
     languages:
       - javascript

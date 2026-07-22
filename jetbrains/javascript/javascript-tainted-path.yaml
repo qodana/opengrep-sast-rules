@@ -1,6 +1,7 @@
 rules:
   - id: javascript-javascript-tainted-path
     metadata:
+      shortDescription: "User data reaches a filesystem path"
       category: security
       cwe:
         - "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
@@ -8,7 +9,8 @@ rules:
         - "A05:2017 - Broken Access Control"
         - "A01:2021 - Broken Access Control"
         - "A01:2025 - Broken Access Control"
-    message: User-controlled data reaches a filesystem path sink.
+    message: >-
+      User-controlled data reaches a filesystem path sink
     languages:
       - javascript
       - typescript

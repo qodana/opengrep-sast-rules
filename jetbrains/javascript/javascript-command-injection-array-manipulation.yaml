@@ -7,6 +7,7 @@ rules:
       push(), this can lead to command injection. Validate user input and avoid using
       shell interpreters.
     metadata:
+      shortDescription: "User input used in array arguments that are passed to command execution"
       cwe:
         - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
       owasp:

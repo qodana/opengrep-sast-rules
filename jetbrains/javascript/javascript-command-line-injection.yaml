@@ -1,6 +1,7 @@
 rules:
   - id: javascript-command-line-argument-command-injection
     metadata:
+      shortDescription: "Command line input flows into a shell command"
       category: security
       cwe:
         - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
@@ -8,7 +9,8 @@ rules:
         - "A01:2017 - Injection"
         - "A03:2021 - Injection"
         - "A05:2025 - Injection"
-    message: Command line input flows into a shell command.
+    message: >-
+      Command line input flows into a shell command
     languages:
       - javascript
       - typescript

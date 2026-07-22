@@ -1,6 +1,7 @@
 rules:
   - id: javascript-xpath-injection
     metadata:
+      shortDescription: "User data reaches an XPath expression"
       category: security
       cwe:
         - "CWE-643: Improper Neutralization of Data within XPath Expressions ('XPath Injection')"
@@ -8,7 +9,8 @@ rules:
         - "A01:2017 - Injection"
         - "A03:2021 - Injection"
         - "A05:2025 - Injection"
-    message: User-controlled data reaches an XPath expression.
+    message: >-
+      User-controlled data reaches an XPath expression, resulting in an XPath injection vulnerability
     languages:
       - javascript
       - typescript

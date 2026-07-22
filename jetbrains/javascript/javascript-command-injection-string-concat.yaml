@@ -7,6 +7,7 @@ rules:
       an array) instead of string concatenation, or ensure proper input validation and
       escaping.
     metadata:
+      shortDescription: "User input being concatenated into a shell command string"
       cwe:
         - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
       owasp:

@@ -6,6 +6,7 @@ rules:
       if the path contains special shell characters. Use execFile/execFileSync with array
       arguments instead of exec with string concatenation, or ensure proper escaping of paths.
     metadata:
+      shortDescription: "Use of __dirname in a shell command"
       cwe:
         - "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
       owasp:

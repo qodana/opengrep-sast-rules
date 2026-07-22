@@ -1,6 +1,7 @@
 rules:
   - id: csharp-stored-xss
     metadata:
+      shortDescription: "User input from the database is used in HTML"
       category: security
       cwe:
         - "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"

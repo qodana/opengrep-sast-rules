@@ -1,6 +1,7 @@
 rules:
   - id: javascript-zip-slip
     metadata:
+      shortDescription: "Archive entry path reaches a filesystem write"
       category: security
       cwe:
         - "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
@@ -12,7 +13,8 @@ rules:
       - javascript
       - typescript
     severity: ERROR
-    message: Archive entry path reaches a filesystem write
+    message: >-
+      Archive entry path reaches a filesystem write
     mode: taint
 
     pattern-sources:

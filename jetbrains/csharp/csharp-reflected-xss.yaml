@@ -1,6 +1,7 @@
 rules:
   - id: csharp-reflected-xss
     metadata:
+      shortDescription: "User input from the HTTP request reaches the HTML output"
       category: security
       cwe:
         - "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
@@ -11,7 +12,8 @@ rules:
     languages: [ csharp ]
     severity: ERROR
     message: >-
-      User-controlled input from the HTTP request reaches the HTML output, resulting in reflected XSS vulnerability
+      User-controlled input from the HTTP request reaches the HTML output,
+      resulting in reflected XSS vulnerability
     mode: taint
 
     pattern-sources:
