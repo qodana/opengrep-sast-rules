@@ -1,0 +1,19 @@
+rules:
+  - id: java-basic-open-redirect
+    languages: [java]
+    severity: WARNING
+    message: Request data controls a redirect. Select the destination from an allowlist.
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: (jakarta.servlet.http.HttpServletRequest $REQUEST).getParameter(...)
+          - pattern: (jakarta.servlet.http.HttpServletRequest $REQUEST).getHeader(...)
+          - pattern: (javax.servlet.http.HttpServletRequest $REQUEST).getParameter(...)
+          - pattern: (javax.servlet.http.HttpServletRequest $REQUEST).getHeader(...)
+        exact: true
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: (jakarta.servlet.http.HttpServletResponse $RESPONSE).sendRedirect($URL)
+              - pattern: (javax.servlet.http.HttpServletResponse $RESPONSE).sendRedirect($URL)
+          - focus-metavariable: $URL

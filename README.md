@@ -44,6 +44,7 @@ header comments of every `.yml` rule file under `rules/lgpl/`, e.g.:
 ├── jetbrains/                 # LGPL v3 + Commons Clause rules (JetBrains-authored)
 │   ├── LICENSE                # Commons Clause condition + full LGPL v3 text
 │   ├── csharp/
+│   ├── java-basic/
 │   └── javascript/
 └── rules/
     └── lgpl/                  # LGPL v3 rules (+ paired test cases)

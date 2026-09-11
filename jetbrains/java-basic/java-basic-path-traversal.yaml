@@ -1,0 +1,19 @@
+rules:
+  - id: java-basic-path-traversal
+    languages: [java]
+    severity: WARNING
+    message: Request data selects a file. Restrict file access to an allowed directory.
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: (jakarta.servlet.http.HttpServletRequest $REQUEST).getParameter(...)
+          - pattern: (jakarta.servlet.http.HttpServletRequest $REQUEST).getHeader(...)
+          - pattern: (javax.servlet.http.HttpServletRequest $REQUEST).getParameter(...)
+          - pattern: (javax.servlet.http.HttpServletRequest $REQUEST).getHeader(...)
+        exact: true
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: new java.io.FileInputStream($PATH)
+              - pattern: new java.io.FileOutputStream($PATH, ...)
+          - focus-metavariable: $PATH

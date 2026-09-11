@@ -1,0 +1,19 @@
+rules:
+  - id: java-basic-expression-injection
+    languages: [java]
+    severity: WARNING
+    message: Request data controls an expression. Keep expression text fixed and pass input as data.
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: (jakarta.servlet.http.HttpServletRequest $REQUEST).getParameter(...)
+          - pattern: (jakarta.servlet.http.HttpServletRequest $REQUEST).getHeader(...)
+          - pattern: (javax.servlet.http.HttpServletRequest $REQUEST).getParameter(...)
+          - pattern: (javax.servlet.http.HttpServletRequest $REQUEST).getHeader(...)
+        exact: true
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: (org.springframework.expression.ExpressionParser $PARSER).parseExpression($EXPRESSION, ...)
+              - pattern: (org.springframework.expression.spel.standard.SpelExpressionParser $PARSER).parseExpression($EXPRESSION, ...)
+          - focus-metavariable: $EXPRESSION

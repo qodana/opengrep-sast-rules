@@ -1,0 +1,34 @@
+rules:
+  - id: java-basic-xss
+    languages: [java]
+    severity: WARNING
+    message: Request data reaches the response without HTML encoding. Encode each value for its output context.
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: (jakarta.servlet.http.HttpServletRequest $REQUEST).getParameter(...)
+          - pattern: (jakarta.servlet.http.HttpServletRequest $REQUEST).getHeader(...)
+          - pattern: (javax.servlet.http.HttpServletRequest $REQUEST).getParameter(...)
+          - pattern: (javax.servlet.http.HttpServletRequest $REQUEST).getHeader(...)
+        exact: true
+    pattern-sanitizers:
+      - pattern: org.springframework.web.util.HtmlUtils.htmlEscape(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: (jakarta.servlet.http.HttpServletResponse $RESPONSE).getWriter().$WRITE($HTML)
+              - pattern: (javax.servlet.http.HttpServletResponse $RESPONSE).getWriter().$WRITE($HTML)
+              - patterns:
+                  - pattern-inside: |
+                      $WRITER = (jakarta.servlet.http.HttpServletResponse $RESPONSE).getWriter();
+                      ...
+                  - pattern: $WRITER.$WRITE($HTML)
+              - patterns:
+                  - pattern-inside: |
+                      $WRITER = (javax.servlet.http.HttpServletResponse $RESPONSE).getWriter();
+                      ...
+                  - pattern: $WRITER.$WRITE($HTML)
+          - metavariable-regex:
+              metavariable: $WRITE
+              regex: ^(write|print|println)$
+          - focus-metavariable: $HTML

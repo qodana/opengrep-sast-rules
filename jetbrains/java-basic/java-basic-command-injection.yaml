@@ -1,0 +1,22 @@
+rules:
+  - id: java-basic-command-injection
+    languages: [java]
+    severity: WARNING
+    message: Request data controls a system command. Select the command from a fixed set of allowed values.
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: (jakarta.servlet.http.HttpServletRequest $REQUEST).getParameter(...)
+          - pattern: (jakarta.servlet.http.HttpServletRequest $REQUEST).getHeader(...)
+          - pattern: (javax.servlet.http.HttpServletRequest $REQUEST).getParameter(...)
+          - pattern: (javax.servlet.http.HttpServletRequest $REQUEST).getHeader(...)
+        exact: true
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: (Runtime $RUNTIME).exec($COMMAND, ...)
+              - pattern: (java.lang.Runtime $RUNTIME).exec($COMMAND, ...)
+              - pattern: Runtime.getRuntime().exec($COMMAND, ...)
+              - pattern: java.lang.Runtime.getRuntime().exec($COMMAND, ...)
+              - pattern: new java.lang.ProcessBuilder($COMMAND)
+          - focus-metavariable: $COMMAND
