@@ -389,7 +389,6 @@ rules:
           - pattern: $VALUE.indexOf(...)
           - pattern: $VALUE.lastIndexOf(...)
           - pattern: $VALUE.includes(...)
-          - pattern: $VALUE.startsWith(...)
           - pattern: $VALUE.endsWith(...)
           # HTML sanitizer libraries
           - pattern: DOMPurify.sanitize(...)
