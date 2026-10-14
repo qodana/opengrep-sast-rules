@@ -39,6 +39,18 @@ rules:
           - patterns:
               - pattern: $E<$T> $METHOD([FromRoute] string $VALUE, ...) { ... }
               - focus-metavariable: $VALUE
+          - patterns:
+              - pattern-either:
+                  - pattern: $BOX.Text
+              - pattern-either:
+                  - pattern-inside: |
+                      class $PAGE : Page { ... }
+                  - pattern-inside: |
+                      class $PAGE : System.Web.UI.Page { ... }
+          - pattern: Request.Cookies[$KEY].Value
+          - pattern: $EXPR.Request.Cookies[$KEY].Value
+          - pattern: Request[$KEY]
+          - pattern: $EXPR.Request[$KEY]
 
     pattern-sinks:
       - patterns:
@@ -59,4 +71,16 @@ rules:
               - pattern: new SQLiteCommand($QUERY, ...)
               - pattern: new SQLiteDataAdapter($QUERY)
               - pattern: new SQLiteDataAdapter($QUERY, ...)
+              - pattern: new MySqlDataAdapter($QUERY)
+              - pattern: new MySqlDataAdapter($QUERY, ...)
+              - pattern: new MySqlDataAdapter(..., $QUERY, ...)
+              - pattern: new SqlDataAdapter(..., $QUERY, ...)
+              - pattern: new SqliteDataAdapter(..., $QUERY, ...)
+              - pattern: new SqliteCommand(..., $QUERY, ...)
+              - pattern: new MySqlCommand($QUERY)
+              - pattern: new MySqlCommand($QUERY, ...)
+              - pattern: new MySqlCommand(..., $QUERY, ...)
           - focus-metavariable: $QUERY
+
+    pattern-sanitizers:
+      - pattern: System.Convert.ToBase64String(...)

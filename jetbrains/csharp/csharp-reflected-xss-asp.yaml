@@ -33,6 +33,20 @@ rules:
                   types:
                     - HttpContext
                     - HttpContextBase
+          - patterns:
+              - pattern-either:
+                  - pattern: Request[$KEY]
+                  - pattern: Request.QueryString[$KEY]
+                  - pattern: Request.Headers
+          - patterns:
+              - pattern-either:
+                  - pattern: $BOX.Text
+              - pattern-either:
+                  - pattern-inside: |
+                      class $PAGE : Page { ... }
+                  - pattern-inside: |
+                      class $PAGE : System.Web.UI.Page { ... }
+          - pattern: System.Convert.FromBase64String($KEY)
           - pattern: $REQ.RawUrl
 
     pattern-sinks:
@@ -61,15 +75,38 @@ rules:
                         - Calendar
                         - Table
                         - Label
+              - patterns:
+                  - pattern: $TEXTBOX.Text = $VALUE
+                  - pattern-not: $TEXTBOX.Text = <... $TEXTBOX.Text ...>
+                  - pattern-either:
+                      - pattern-inside: |
+                          class $PAGE : Page { ... }
+                      - pattern-inside: |
+                          class $PAGE : System.Web.UI.Page { ... }
           - focus-metavariable: $VALUE
 
     pattern-propagators:
       - pattern: $SB.AppendFormat($FORMAT, $VALUE)
         from: $VALUE
         to: $SB
+      - pattern: (StringBuilder $B).$ANY(...+(string $X)+...)
+        from: $X
+        to: $B
 
     pattern-sanitizers:
       - pattern-either:
           - pattern: $ENCODER.HtmlEncode(...)
           - pattern: $ENCODER.UrlEncode(...)
           - pattern: int.Parse(...)
+          - pattern: Server.MapPath(...)
+          - pattern: Server.UrlEncode(...)
+          - pattern: System.Convert.ToBase64String(...)
+          - patterns:
+              - pattern: $ENCRYPT(...)
+              - metavariable-regex:
+                  metavariable: $ENCRYPT
+                  regex: (?i).*encrypt.*
+      - patterns:
+          - pattern-either:
+              - pattern: Array.Reverse(...)
+        by-side-effect: true
