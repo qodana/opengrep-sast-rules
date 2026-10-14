@@ -17,11 +17,23 @@ rules:
     mode: taint
 
     pattern-sources:
-      - patterns:
-          - pattern: $CTX.Request.QueryString[$KEY]
-          - metavariable-type:
-              metavariable: $CTX
-              type: HttpContext
+      - pattern-either:
+          - pattern: Request[$KEY]
+          - pattern: $EXPR.Request[$KEY]
+          - pattern: Request.QueryString[$KEY]
+          - patterns:
+              - pattern-either:
+                  - pattern: $BOX.Text
+              - pattern-either:
+                  - pattern-inside: |
+                      class $PAGE : Page { ... }
+                  - pattern-inside: |
+                      class $PAGE : System.Web.UI.Page { ... }
+          - patterns:
+              - pattern: $CTX.Request.QueryString[$KEY]
+              - metavariable-type:
+                  metavariable: $CTX
+                  type: HttpContext
 
     pattern-sinks:
       - patterns:
@@ -31,6 +43,8 @@ rules:
               - pattern: File.Exists($PATH)
               - pattern: new StreamWriter($PATH)
               - pattern: Directory.Exists($PATH)
+              - pattern: new FileStream($PATH, ...)
+              - pattern: new FileInfo($PATH)
           - focus-metavariable: $PATH
 
 
@@ -43,3 +57,4 @@ rules:
                   type: HttpContext
           - pattern: new Guid(...)
           - pattern: int.Parse(...)
+          - pattern: new CryptoStream(..., $ENC, $MODE)
