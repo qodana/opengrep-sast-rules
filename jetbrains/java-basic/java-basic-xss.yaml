@@ -12,7 +12,13 @@ rules:
           - pattern: (javax.servlet.http.HttpServletRequest $REQUEST).getHeader(...)
         exact: true
     pattern-sanitizers:
-      - pattern: org.springframework.web.util.HtmlUtils.htmlEscape(...)
+      - pattern-either:
+          - pattern: org.springframework.web.util.HtmlUtils.htmlEscape(...)
+          - patterns:
+              - pattern: org.owasp.encoder.Encode.$ENCODE(...)
+              - metavariable-regex:
+                  metavariable: $ENCODE
+                  regex: ^for(Html|HtmlContent|HtmlAttribute|HtmlUnquotedAttribute|Xml|XmlContent|XmlAttribute)$
     pattern-sinks:
       - patterns:
           - pattern-either:
