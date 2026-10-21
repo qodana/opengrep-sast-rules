@@ -1,5 +1,5 @@
 rules:
-  - id: javascript-javascript-tainted-path
+  - id: javascript-tainted-path
     metadata:
       shortDescription: "User data reaches a filesystem path"
       category: security

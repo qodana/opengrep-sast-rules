@@ -71,8 +71,6 @@ rules:
                   import { ɵgetDOM } from '@angular/common';
                   ...
               - pattern: ɵgetDOM().getLocation().href
-          # TODO: find out why it was needed
-          #- pattern: $MAP.get(...)
           - pattern: $VALUE.comment
           - pattern: $VALUE[$IDX].comment
           - pattern: $VALUE.Body.toString()
@@ -275,10 +273,6 @@ rules:
               - pattern: $($EL).appendTo($VALUE, ...)
               - pattern: $($EL).replaceWith($VALUE, ...)
               - pattern: $EL.replaceWith($VALUE, ...)
-              # TODO not specific enough
-              #- pattern: $($EL).attr($ATTR, $VALUE, ...)
-              #- pattern: '$($EL).attr({ href: $VALUE, ... })'
-              #- pattern: '$($EL).attr({ src: $VALUE, ... })'
               - pattern: document.write($VALUE, ...)
               - pattern: $EL.innerHTML = $VALUE
               - pattern: $EL.innerHTML += $VALUE
