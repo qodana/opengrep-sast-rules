@@ -18,7 +18,7 @@ drawn from several well-known open-source SAST projects:
 | --- | --- | --- |
 | [GitLab SAST rules](https://gitlab.com/gitlab-org/security-products/sast-rules) (MIT-licensed top-level content, © GitLab Inc.) | MIT (Expat) | `c/`, `csharp/`, `go/`, `javascript/`, `python/`, `scala/` |
 | [Find Security Bugs](https://find-sec-bugs.github.io/) | LGPL v3 | `rules/lgpl/kotlin/**` |
-| [MobSF / mobsfscan](https://github.com/MobSF/mobsfscan) | LGPL v3 | `rules/lgpl/oc/**`, `rules/lgpl/swift/**` |
+| [MobSF / mobsfscan](https://github.com/MobSF/mobsfscan) | LGPL v3 | `rules/lgpl/swift/**` |
 | [njsscan](https://github.com/ajinabraham/njsscan) | LGPL v3 | `rules/lgpl/javascript/**` |
 
 Per-file attribution (original upstream URL and license) is preserved in the
