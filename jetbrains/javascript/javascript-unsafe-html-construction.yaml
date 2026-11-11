@@ -1,0 +1,135 @@
+rules:
+  - id: javascript-unsafe-html-construction
+    metadata:
+      shortDescription: "Unsafe HTML is constructed from library input"
+      category: security
+      cwe:
+        - "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp:
+        - "A07:2017 - Cross-Site Scripting (XSS)"
+        - "A03:2021 - Injection"
+        - "A05:2025 - Injection"
+    message: >-
+      A parameter of an exported library function is used to construct HTML that is added to the page,
+      resulting in a cross-site scripting vulnerability
+    languages:
+      - javascript
+      - typescript
+    severity: ERROR
+    mode: taint
+
+    pattern-sources:
+      # A caller of the library controls the parameters of an exported function
+      - patterns:
+          - pattern-either:
+              - pattern: |
+                  module.exports.$FUNC = function (..., $PARAM, ...) { ... }
+              - pattern: |
+                  module.exports.$FUNC = function $NAME(..., $PARAM, ...) { ... }
+              - pattern: |
+                  export function $FUNC(..., $PARAM, ...) { ... }
+              - pattern: |
+                  $.fn.$FUNC = function (..., $PARAM, ...) { ... }
+          - focus-metavariable: $PARAM
+
+    pattern-sinks:
+      # A value is concatenated or interpolated into an HTML string that is added to the page
+      - patterns:
+          - pattern-either:
+              - patterns:
+                  - pattern: $HTML + $VALUE
+                  - metavariable-regex:
+                      metavariable: $HTML
+                      regex: '^["''`][^"''`]*<'
+              - patterns:
+                  - pattern: "`...${$VALUE}...`"
+                  - pattern-regex: '`[^`]*<[^`]*`'
+          - pattern-either:
+              - pattern-inside: $ELEMENT.innerHTML = $EXPR
+              - pattern-inside: $ELEMENT.outerHTML = $EXPR
+              - pattern-inside: $ELEMENT.html(...)
+              - pattern-inside: $ELEMENT.append(...)
+              - pattern-inside: $(...)
+              - pattern-inside: document.write(...)
+              - pattern-inside: |
+                  $VAR = $EXPR;
+                  ...
+                  $ELEMENT.innerHTML = $VAR;
+              - pattern-inside: |
+                  $VAR = $EXPR;
+                  ...
+                  $ELEMENT.html($VAR);
+              # A helper function returns the HTML, and the caller adds it to the page
+              - pattern-inside: |
+                  function $HELPER(...) {
+                    ...
+                    return $EXPR;
+                  }
+                  ...
+                  <... $ELEMENT.html($HELPER(...)) ...>;
+          # A document from createHTMLDocument is not connected to the page
+          - pattern-not-inside: |
+              $DOC = document.implementation.createHTMLDocument(...);
+              ...
+          - pattern-not-inside: striptags(...)
+          # A template property holds intended markup
+          - metavariable-regex:
+              metavariable: $VALUE
+              regex: '^(?!.*(?i:template))'
+          - focus-metavariable: $VALUE
+      # A parsed XML document is added to the page
+      - patterns:
+          - pattern: new DOMParser().parseFromString($VALUE, ...)
+          - pattern-inside: |
+              $DOC = new DOMParser().parseFromString(...);
+              ...
+              $ELEMENT.appendChild(...);
+          - focus-metavariable: $VALUE
+      # markdown-it with the html option keeps raw HTML in the input
+      - patterns:
+          - pattern: $MARKDOWN.render($VALUE, ...)
+          - pattern-inside: |
+              $MARKDOWN = require("markdown-it")({..., html: true, ...});
+              ...
+          - focus-metavariable: $VALUE
+      # Mermaid renders the diagram source to SVG markup
+      - patterns:
+          - pattern-either:
+              - pattern: mermaid.render($ID, $VALUE, ...)
+              - pattern: mermaid.mermaidAPI.render($ID, $VALUE, ...)
+              - patterns:
+                  - pattern: $MERMAID.render($ID, $VALUE, ...)
+                  - pattern-inside: |
+                      $MERMAID = require("mermaid");
+                      ...
+          - focus-metavariable: $VALUE
+
+    pattern-sanitizers:
+      - pattern: striptags(...)
+      # Removing quotes or angle brackets makes the value safe in an attribute or text
+      - patterns:
+          - pattern: $X.replace($REGEX, "")
+          - metavariable-regex:
+              metavariable: $REGEX
+              regex: '^/.*["''<>].*/[a-z]*$'
+      # A number or a boolean cannot contain markup
+      - patterns:
+          - pattern-either:
+              - pattern-inside: |
+                  if (typeof $X === "number") $THEN;
+              - pattern-inside: |
+                  if (typeof $X === "boolean") $THEN;
+          - focus-metavariable: $THEN
+          - pattern: $X
+      # A check that the value has no quotes makes it safe in an attribute
+      - patterns:
+          - pattern-inside: |
+              if (<... $X.indexOf($QUOTE) === -1 ...>) $THEN;
+          - focus-metavariable: $THEN
+          - pattern: $X
+      # An exported function called inside the library gets its arguments from the library, not from a caller
+      - patterns:
+          - pattern: $FUNC(...)
+          - pattern-inside: |
+              export function $FUNC(...) { ... }
+              ...
