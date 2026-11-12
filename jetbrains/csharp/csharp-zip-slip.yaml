@@ -20,7 +20,7 @@ rules:
       - patterns:
           - pattern: $ENTRY.FullName
           - pattern-inside: |
-              foreach ($E in $ARCHIVE.Entries) {
+              foreach ($ENTRY in $ARCHIVE.Entries) {
                 ...
               }
           - metavariable-type:
@@ -28,6 +28,10 @@ rules:
               type: ZipArchive
       - patterns:
           - pattern: $ENTRY.$FIELD
+          # See: https://learn.microsoft.com/en-us/dotnet/api/system.io.compression.ziparchiveentry?view=net-10.0#properties
+          - metavariable-regex:
+              metavariable: $FIELD
+              regex: ^(FullName|Name)$
           - metavariable-type:
               metavariable: $ENTRY
               type: ZipArchiveEntry
@@ -41,20 +45,56 @@ rules:
       - pattern: $PATH.Substring($PATH.LastIndexOf("/"))
       - patterns:
           - pattern-either:
-              - pattern: |
+              - pattern-inside: |
                   if (!$PATH.StartsWith(...)) {
+                    ...
                     throw ...;
                   }
-              - pattern: |
+                  ...
+              - pattern-inside: |
                   if (!$PATH.StartsWith(...))
                     throw ...;
-              - pattern: |
+                  ...
+              - pattern-inside: |
                   if (!$PATH.StartsWith(...)) {
+                    ...
                     return ...;
                   }
-              - pattern: |
+                  ...
+              - pattern-inside: |
                   if (!$PATH.StartsWith(...))
                     return ...;
+                  ...
+              - pattern-inside: |
+                  if (!$PATH.StartsWith(...)) {
+                    ...
+                    return;
+                  }
+                  ...
+              - pattern-inside: |
+                  if (!$PATH.StartsWith(...))
+                    return;
+                  ...
+          - pattern: $PATH
+      - patterns:
+          - pattern-either:
+              - pattern: |
+                  if ($PATH.StartsWith(...)) {
+                    ...
+                  }
+              - pattern: |
+                  if ($PATH.StartsWith(...))
+                    ...
+          - pattern-either:
+              - pattern-inside: |
+                  $PATH = Path.GetFullPath(...);
+                  ...
+              - pattern-inside: |
+                  $TYPE $PATH = Path.GetFullPath(...);
+                  ...
+              - pattern-inside: |
+                  var $PATH = Path.GetFullPath(...);
+                  ...
           - focus-metavariable: $PATH
         by-side-effect: true
 
@@ -64,7 +104,7 @@ rules:
               - patterns:
                   - pattern: $ENTRY.ExtractToFile($PATH, ...)
                   - pattern-inside: |
-                      foreach ($E in $ARCHIVE.Entries) {
+                      foreach ($ENTRY in $ARCHIVE.Entries) {
                         ...
                       }
                   - metavariable-type:
