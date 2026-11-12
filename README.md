@@ -16,9 +16,7 @@ drawn from several well-known open-source SAST projects:
 
 | Upstream project | Upstream license | Path in this repo |
 | --- | --- | --- |
-| [GitLab SAST rules](https://gitlab.com/gitlab-org/security-products/sast-rules) (MIT-licensed top-level content, © GitLab Inc.) | MIT (Expat) | `c/`, `csharp/`, `go/`, `javascript/`, `python/`, `scala/` |
-| [Find Security Bugs](https://find-sec-bugs.github.io/) | LGPL v3 | `rules/lgpl/kotlin/**` |
-| [MobSF / mobsfscan](https://github.com/MobSF/mobsfscan) | LGPL v3 | `rules/lgpl/swift/**` |
+| [GitLab SAST rules](https://gitlab.com/gitlab-org/security-products/sast-rules) (MIT-licensed top-level content, © GitLab Inc.) | MIT (Expat) | `csharp/`, `javascript/` |
 | [njsscan](https://github.com/ajinabraham/njsscan) | LGPL v3 | `rules/lgpl/javascript/**` |
 
 Per-file attribution (original upstream URL and license) is preserved in the
@@ -27,7 +25,7 @@ header comments of every `.yml` rule file under `rules/lgpl/`, e.g.:
 ```yaml
 # yamllint disable
 # License: GNU Lesser General Public License v3.0
-# source (original): https://github.com/MobSF/mobsfscan/blob/main/...
+# source (original): https://github.com/ajinabraham/njsscan/blob/master/...
 # yamllint enable
 ```
 
@@ -37,10 +35,8 @@ header comments of every `.yml` rule file under `rules/lgpl/`, e.g.:
 .
 ├── LICENSE                    # MIT — applies to top-level rule directories
 ├── README.md
-├── c/           csharp/       # MIT rules (+ paired test cases)
-├── go/          
-├── javascript/  python/
-├── scala/
+├── csharp/                    # MIT rules (+ paired test cases)
+├── javascript/
 ├── jetbrains/                 # LGPL v3 + Commons Clause rules (JetBrains-authored)
 │   ├── LICENSE                # Commons Clause condition + full LGPL v3 text
 │   ├── csharp/
@@ -48,21 +44,18 @@ header comments of every `.yml` rule file under `rules/lgpl/`, e.g.:
 └── rules/
     └── lgpl/                  # LGPL v3 rules (+ paired test cases)
         ├── LICENSE            # full LGPL v3 text
-        ├── javascript/
-        ├── oc/
-        └── swift/
+        └── javascript/
 ```
 
 Each rule file `rule-<name>.yml` is paired with a test-case file
-`rule-<name>.<ext>` in the same directory (`.c`, `.py`,
-`.js`, `.scala`, `.cs`, `.go`, `.m`, `.swift`).
+`rule-<name>.<ext>` in the same directory (`.js`, `.cs`).
 
 ## License summary
 
 | Path | License | Copyright | Use in a commercial product |
 | --- | --- | --- | --- |
-| `LICENSE` (root) and top-level language dirs (`c/`, `csharp/`, `go/`, `java/`, `javascript/`, `python/`, `scala/`) | MIT (Expat) | © 2011–present GitLab Inc. | Allowed. Retain the copyright notice and MIT license text in the product's third-party notices. |
-| `rules/lgpl/**` | LGPL v3.0 | © respective upstream authors (Find Security Bugs, MobSF, njsscan, GitLab Inc. and contributors) | Allowed. See the compliance notes below. |
+| `LICENSE` (root) and top-level language dirs (`csharp/`, `javascript/`) | MIT (Expat) | © 2011–present GitLab Inc. | Allowed. Retain the copyright notice and MIT license text in the product's third-party notices. |
+| `rules/lgpl/**` | LGPL v3.0 | © respective upstream authors (njsscan, GitLab Inc. and contributors) | Allowed. See the compliance notes below. |
 | `jetbrains/**` | LGPL v3.0 **+ Commons Clause** | © 2026 JetBrains s.r.o. | Restricted. The Commons Clause forbids selling a product or service whose value derives substantially from these rules. See `jetbrains/LICENSE`. |
 
 ### LGPL v3 compliance notes
